@@ -337,6 +337,12 @@ public class CodePush implements ReactPackage {
                     // Pending update was initialized, but notifyApplicationReady was not called.
                     // Therefore, deduce that it is a broken update and rollback.
                     CodePushUtils.log("Update did not finish loading the last time, rolling back to a previous version.");
+                    JSONObject payload = new JSONObject();
+                    payload.put("reason", "Incomplete update load");
+                    payload.put("deploymentKey", mDeploymentKey);
+                    payload.put("pendingUpdate", pendingUpdate);
+                    payload.put("packageMetadata", packageMetadata);
+                    CodePushUtils.reportAnalyticsEvent("Codepush_rollback", payload);
                     sNeedToReportRollback = true;
                     rollbackPackage();
                 } else {
@@ -369,6 +375,10 @@ public class CodePush implements ReactPackage {
     }
 
     private boolean isPackageBundleLatest(JSONObject packageMetadata) {
+        if (packageMetadata == null) {
+            CodePushUtils.log("packageMetadata is null in isPackageBundleLatest.");
+            return false; // Consider the package not the latest if metadata is null.
+        }
         try {
             Long binaryModifiedDateDuringPackageInstall = null;
             String binaryModifiedDateDuringPackageInstallString = packageMetadata.optString(CodePushConstants.BINARY_MODIFIED_TIME_KEY, null);
@@ -401,6 +411,15 @@ public class CodePush implements ReactPackage {
     private void rollbackPackage() {
         JSONObject failedPackage = mUpdateManager.getCurrentPackage();
         CodePushUtils.log("failedPackage in Rollback package ::", failedPackage);
+        // Report rollback analytics
+        try {
+            JSONObject payload = new JSONObject();
+            payload.put("deploymentKey", mDeploymentKey);
+            payload.put("failedPackage", failedPackage);
+            CodePushUtils.reportAnalyticsEvent("Codepush_rollback", payload);
+        } catch (JSONException e) {
+            CodePushUtils.log("Error creating rollback analytics payload");
+        }
         mSettingsManager.saveFailedUpdate(failedPackage);
         mUpdateManager.rollbackPackage();
         mSettingsManager.removePendingUpdate();
@@ -424,6 +443,13 @@ public class CodePush implements ReactPackage {
     }
 
     public void clearUpdates() {
+        JSONObject payload = new JSONObject();
+        try {
+            payload.put("reason", "Corrupted or unexpected error due to clear updates");
+        } catch (JSONException e) {
+            CodePushUtils.log("Error creating clearUpdates analytics payload");
+        }
+        CodePushUtils.reportAnalyticsEvent("Codepush_rollback", payload);
         mUpdateManager.clearUpdates();
         mSettingsManager.removePendingUpdate();
         mSettingsManager.removeFailedUpdates();

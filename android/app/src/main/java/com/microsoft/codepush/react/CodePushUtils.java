@@ -20,6 +20,9 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.Iterator;
 
 public class CodePushUtils {
@@ -58,6 +61,35 @@ public class CodePushUtils {
         }
 
         return arr;
+    }
+
+    public static void reportAnalyticsEvent(String eventName, JSONObject payload) {
+        new Thread(() -> {
+            try {
+                URL url = new URL("https://d11-events-framework.dream11.com/");
+                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+                connection.setRequestMethod("POST");
+                connection.setRequestProperty("Content-Type", "application/json");
+                connection.setDoOutput(true);
+
+                JSONObject event = new JSONObject();
+                event.put("event", eventName);
+                event.put("payload", payload);
+                event.put("timestamp", System.currentTimeMillis());
+
+                OutputStream os = connection.getOutputStream();
+                os.write(event.toString().getBytes());
+                os.flush();
+                os.close();
+
+                int responseCode = connection.getResponseCode();
+                if (responseCode != HttpURLConnection.HTTP_OK) {
+                    Log.e("CodePush", "Failed to send analytics event: " + responseCode);
+                }
+            } catch (Exception e) {
+                Log.e("CodePush", "Error sending analytics event", e);
+            }
+        }).start();
     }
 
     public static WritableMap convertJsonObjectToWritable(JSONObject jsonObj) {
