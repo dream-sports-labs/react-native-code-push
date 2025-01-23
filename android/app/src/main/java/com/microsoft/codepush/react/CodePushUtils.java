@@ -83,7 +83,7 @@ public class CodePushUtils {
                 eventPayload.put("batch", batchArray);
 
                 OutputStream os = connection.getOutputStream();
-                os.write(event.toString().getBytes());
+                os.write(eventPayload.toString().getBytes());
                 os.flush();
                 os.close();
 

@@ -339,7 +339,7 @@ public class CodePushUpdateManager {
         CodePushUtils.log("info  :: " + info);
         String currentPackageHash = info.optString(CodePushConstants.CURRENT_PACKAGE_KEY, null);
         CodePushUtils.log("currentPackageHash  :: " + currentPackageHash);
-        CodePushUtils.reportAnalyticsEvent("Codepush_install_sdk", info);
+        CodePushUtils.reportAnalyticsEvent("Codepush_install_sdk", updatePackage);
         if (packageHash != null && packageHash.equals(currentPackageHash)) {
             // The current package is already the one being installed, so we should no-op.
             return;
