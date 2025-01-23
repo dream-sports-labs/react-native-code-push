@@ -233,8 +233,10 @@ async function tryReportStatus(statusReport, retryOnAppResume) {
 async function shouldUpdateBeIgnored(remotePackage, syncOptions) {
   let { rollbackRetryOptions } = syncOptions;
 
+  console.log("rollbackRetryOptions", rollbackRetryOptions);
   const isFailedPackage = remotePackage && remotePackage.failedInstall;
   if (!isFailedPackage || !syncOptions.ignoreFailedUpdates) {
+    console.log("isFailedPackage", isFailedPackage);
     return false;
   }
 
@@ -435,8 +437,8 @@ async function syncInternal(options = {}, syncStatusChangeCallback, downloadProg
       return CodePush.SyncStatus.UPDATE_INSTALLED;
     };
 
-    log("remotePackage", remotePackage);
-    log("sync options", syncOptions);
+    console.log("remotePackage", remotePackage);
+    console.log("sync options", syncOptions);
     const updateShouldBeIgnored = await shouldUpdateBeIgnored(remotePackage, syncOptions);
 
     if (!remotePackage || updateShouldBeIgnored) {
