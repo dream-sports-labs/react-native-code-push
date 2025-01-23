@@ -435,6 +435,8 @@ async function syncInternal(options = {}, syncStatusChangeCallback, downloadProg
       return CodePush.SyncStatus.UPDATE_INSTALLED;
     };
 
+    log("remotePackage", remotePackage);
+    log("sync options", syncOptions);
     const updateShouldBeIgnored = await shouldUpdateBeIgnored(remotePackage, syncOptions);
 
     if (!remotePackage || updateShouldBeIgnored) {

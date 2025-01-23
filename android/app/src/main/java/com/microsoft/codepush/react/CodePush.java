@@ -338,7 +338,7 @@ public class CodePush implements ReactPackage {
                     // Therefore, deduce that it is a broken update and rollback.
                     CodePushUtils.log("Update did not finish loading the last time, rolling back to a previous version.");
                     JSONObject payload = new JSONObject();
-                    payload.put("reason", "Incomplete update load");
+                    payload.put("reason", "Update did not finish loading");
                     payload.put("deploymentKey", mDeploymentKey);
                     payload.put("pendingUpdate", pendingUpdate);
                     payload.put("packageMetadata", packageMetadata);
@@ -420,6 +420,7 @@ public class CodePush implements ReactPackage {
             payload.put("failedPackage", failedPackage);
             payload.put("appVersion", sAppVersion);
             payload.put("timestamp", System.currentTimeMillis());
+            payload.put("reason","rollback package called");
             CodePushUtils.reportAnalyticsEvent("Codepush_rollback", payload);
         } catch (JSONException e) {
             CodePushUtils.log("Error creating rollback analytics payload");

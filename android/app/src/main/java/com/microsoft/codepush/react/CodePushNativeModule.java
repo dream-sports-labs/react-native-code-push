@@ -359,6 +359,8 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
                     JSONObject newPackage = mUpdateManager.getPackage(CodePushUtils.tryGetString(updatePackage, CodePushConstants.PACKAGE_HASH_KEY));
                     promise.resolve(CodePushUtils.convertJsonObjectToWritable(newPackage));
                 } catch (CodePushInvalidUpdateException e) {
+                    JSONObject packageForAnalytics = CodePushUtils.convertReadableToJsonObject(updatePackage);
+                    CodePushUtils.reportAnalyticsEvent("Codepush_download_failed", packageForAnalytics);
                     CodePushUtils.log(e);
                     mSettingsManager.saveFailedUpdate(CodePushUtils.convertReadableToJsonObject(updatePackage));
                     promise.reject(e);
