@@ -342,6 +342,8 @@ public class CodePush implements ReactPackage {
                     payload.put("deploymentKey", mDeploymentKey);
                     payload.put("pendingUpdate", pendingUpdate);
                     payload.put("packageMetadata", packageMetadata);
+                    payload.put("appVersion", sAppVersion);
+                    payload.put("timestamp", System.currentTimeMillis());
                     CodePushUtils.reportAnalyticsEvent("Codepush_rollback", payload);
                     sNeedToReportRollback = true;
                     rollbackPackage();
@@ -416,6 +418,8 @@ public class CodePush implements ReactPackage {
             JSONObject payload = new JSONObject();
             payload.put("deploymentKey", mDeploymentKey);
             payload.put("failedPackage", failedPackage);
+            payload.put("appVersion", sAppVersion);
+            payload.put("timestamp", System.currentTimeMillis());
             CodePushUtils.reportAnalyticsEvent("Codepush_rollback", payload);
         } catch (JSONException e) {
             CodePushUtils.log("Error creating rollback analytics payload");
@@ -446,9 +450,13 @@ public class CodePush implements ReactPackage {
         JSONObject payload = new JSONObject();
         try {
             payload.put("reason", "Corrupted or unexpected error due to clear updates");
+            payload.put("deploymentKey", mDeploymentKey);
+            payload.put("appVersion", sAppVersion);
+            payload.put("timestamp", System.currentTimeMillis());
         } catch (JSONException e) {
             CodePushUtils.log("Error creating clearUpdates analytics payload");
         }
+
         CodePushUtils.reportAnalyticsEvent("Codepush_rollback", payload);
         mUpdateManager.clearUpdates();
         mSettingsManager.removePendingUpdate();

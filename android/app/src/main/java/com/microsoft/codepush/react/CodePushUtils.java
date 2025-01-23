@@ -72,10 +72,15 @@ public class CodePushUtils {
                 connection.setRequestProperty("Content-Type", "application/json");
                 connection.setDoOutput(true);
 
+                JSONObject eventPayload = new JSONObject();
                 JSONObject event = new JSONObject();
-                event.put("event", eventName);
-                event.put("payload", payload);
-                event.put("timestamp", System.currentTimeMillis());
+                event.put("eventName", eventName);
+                event.put("props", payload);
+
+                // Add the event to the batch
+                JSONArray batchArray = new JSONArray();
+                batchArray.put(event);
+                eventPayload.put("batch", batchArray);
 
                 OutputStream os = connection.getOutputStream();
                 os.write(event.toString().getBytes());
@@ -83,8 +88,10 @@ public class CodePushUtils {
                 os.close();
 
                 int responseCode = connection.getResponseCode();
-                if (responseCode != HttpURLConnection.HTTP_OK) {
-                    Log.e("CodePush", "Failed to send analytics event: " + responseCode);
+                if (responseCode == HttpURLConnection.HTTP_OK) {
+                    Log.d("CodePush", "Analytics event sent successfully: " + eventPayload.toString());
+                } else {
+                    Log.e("CodePush", "Failed to send analytics event: HTTP " + responseCode);
                 }
             } catch (Exception e) {
                 Log.e("CodePush", "Error sending analytics event", e);

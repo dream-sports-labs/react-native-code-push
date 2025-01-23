@@ -2,6 +2,7 @@ package com.microsoft.codepush.react;
 
 import android.os.Build;
 
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedInputStream;
@@ -225,11 +226,13 @@ public class CodePushUpdateManager {
             }
 
             if (totalBytes != receivedBytes) {
+                CodePushUtils.reportAnalyticsEvent("Codepush_download_failed", updatePackage);
                 throw new CodePushUnknownException("Received " + receivedBytes + " bytes, expected " + totalBytes);
             }
 
             isZip = ByteBuffer.wrap(header).getInt() == 0x504b0304;
         } catch (MalformedURLException e) {
+            CodePushUtils.reportAnalyticsEvent("Codepush_download_failed", updatePackage);
             throw new CodePushMalformedDataException(downloadUrlString, e);
         } finally {
             try {
@@ -238,6 +241,7 @@ public class CodePushUpdateManager {
                 if (bin != null) bin.close();
                 if (connection != null) connection.disconnect();
             } catch (IOException e) {
+                CodePushUtils.reportAnalyticsEvent("Codepush_download_failed", updatePackage);
                 throw new CodePushUnknownException("Error closing IO resources.", e);
             }
         }
@@ -335,6 +339,7 @@ public class CodePushUpdateManager {
         CodePushUtils.log("info  :: " + info);
         String currentPackageHash = info.optString(CodePushConstants.CURRENT_PACKAGE_KEY, null);
         CodePushUtils.log("currentPackageHash  :: " + currentPackageHash);
+        CodePushUtils.reportAnalyticsEvent("Codepush_install_sdk", info);
         if (packageHash != null && packageHash.equals(currentPackageHash)) {
             // The current package is already the one being installed, so we should no-op.
             return;
