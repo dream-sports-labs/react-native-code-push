@@ -343,7 +343,6 @@ public class CodePush implements ReactPackage {
                     payload.put("pendingUpdate", pendingUpdate);
                     payload.put("packageMetadata", packageMetadata);
                     payload.put("appVersion", sAppVersion);
-                    payload.put("timestamp", System.currentTimeMillis());
                     CodePushUtils.reportAnalyticsEvent("Codepush_rollback", payload);
                     sNeedToReportRollback = true;
                     rollbackPackage();
@@ -419,7 +418,6 @@ public class CodePush implements ReactPackage {
             payload.put("deploymentKey", mDeploymentKey);
             payload.put("failedPackage", failedPackage);
             payload.put("appVersion", sAppVersion);
-            payload.put("timestamp", System.currentTimeMillis());
             payload.put("reason","rollback package called");
             CodePushUtils.reportAnalyticsEvent("Codepush_rollback", payload);
         } catch (JSONException e) {
@@ -453,7 +451,6 @@ public class CodePush implements ReactPackage {
             payload.put("reason", "Corrupted or unexpected error due to clear updates");
             payload.put("deploymentKey", mDeploymentKey);
             payload.put("appVersion", sAppVersion);
-            payload.put("timestamp", System.currentTimeMillis());
         } catch (JSONException e) {
             CodePushUtils.log("Error creating clearUpdates analytics payload");
         }

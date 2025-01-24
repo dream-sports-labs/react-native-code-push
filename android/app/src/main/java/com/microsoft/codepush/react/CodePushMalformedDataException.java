@@ -21,7 +21,6 @@ public class CodePushMalformedDataException extends RuntimeException {
         try {
             payload.put("exception", "CodePushMalformedException");
             payload.put("message", message);
-            payload.put("timestamp", System.currentTimeMillis());
             if (cause != null) {
                 payload.put("cause", cause.getMessage());
             }

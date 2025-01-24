@@ -75,6 +75,7 @@ public class CodePushUtils {
                 JSONObject eventPayload = new JSONObject();
                 JSONObject event = new JSONObject();
                 payload.put("app_name", "com.app.dream11Pro");
+                payload.put("timestamp", System.currentTimeMillis());
                 event.put("eventName", eventName);
                 event.put("props", payload);
                 

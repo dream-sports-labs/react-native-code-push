@@ -20,9 +20,7 @@ class CodePushUnknownException extends RuntimeException {
         JSONObject payload = new JSONObject();
         try {
             payload.put("exception", "CodePushUnknownException");
-            payload.put("message", message);
-            payload.put("timestamp", System.currentTimeMillis());
-            if (cause != null) {
+            payload.put("message", message);            if (cause != null) {
                 payload.put("cause", cause.getMessage());
             }
             CodePushUtils.reportAnalyticsEvent("Codepush_rollback", payload);
