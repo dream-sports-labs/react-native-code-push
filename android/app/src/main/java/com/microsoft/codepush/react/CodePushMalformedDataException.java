@@ -25,7 +25,7 @@ public class CodePushMalformedDataException extends RuntimeException {
             if (cause != null) {
                 payload.put("cause", cause.getMessage());
             }
-            CodePushUtils.reportAnalyticsEvent("Codepush_Rollback", payload);
+            CodePushUtils.reportAnalyticsEvent("Codepush_rollback", payload);
         } catch (JSONException e) {
             CodePushUtils.log("Error logging malformedException");
         }

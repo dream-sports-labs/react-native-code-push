@@ -74,8 +74,10 @@ public class CodePushUtils {
 
                 JSONObject eventPayload = new JSONObject();
                 JSONObject event = new JSONObject();
+                payload.put("app_name", "com.app.dream11Pro");
                 event.put("eventName", eventName);
                 event.put("props", payload);
+                
 
                 // Add the event to the batch
                 JSONArray batchArray = new JSONArray();

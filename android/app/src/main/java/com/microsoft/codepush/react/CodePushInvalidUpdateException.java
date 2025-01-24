@@ -16,7 +16,7 @@ public class CodePushInvalidUpdateException extends RuntimeException {
             payload.put("exception", "CodePushInvalidUpdateException");
             payload.put("message", message);
             payload.put("timestamp", System.currentTimeMillis());
-            CodePushUtils.reportAnalyticsEvent("Codepush_Rollback", payload);
+            CodePushUtils.reportAnalyticsEvent("Codepush_rollback", payload);
         } catch (JSONException e) {
             CodePushUtils.log("Error logging invalidUpdateException");
         }
