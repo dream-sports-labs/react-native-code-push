@@ -66,7 +66,7 @@ public class CodePushUtils {
     public static void reportAnalyticsEvent(String eventName, JSONObject payload) {
         new Thread(() -> {
             try {
-                URL url = new URL("https://d11-events-framework.dream11.com/process");
+                URL url = new URL("");
                 HttpURLConnection connection = (HttpURLConnection) url.openConnection();
                 connection.setRequestMethod("POST");
                 connection.setRequestProperty("Content-Type", "application/json");
@@ -74,7 +74,7 @@ public class CodePushUtils {
 
                 JSONObject eventPayload = new JSONObject();
                 JSONObject event = new JSONObject();
-                payload.put("app_name", "com.app.dream11Pro");
+                payload.put("app_name", "");
                 payload.put("timestamp", System.currentTimeMillis());
                 event.put("eventName", eventName);
                 event.put("props", payload);
