@@ -19,6 +19,7 @@ async function checkForUpdate(deploymentKey = null, handleBinaryVersionMismatchC
    * different from the CodePush update they have already installed.
    */
   const nativeConfig = await getConfiguration();
+  log(`nativeConfig during update check (${nativeConfig})`);
   /*
    * If a deployment key was explicitly provided,
    * then let's override the one we retrieved
@@ -182,7 +183,7 @@ async function notifyApplicationReadyInternal() {
 
 async function tryReportStatus(statusReport, retryOnAppResume) {
   const config = await getConfiguration();
-  log(`Configuration set before report(${config})`);
+  log(`Configuration set before reporting status(${config})`);
   const previousLabelOrAppVersion = statusReport.previousLabelOrAppVersion;
   const previousDeploymentKey = statusReport.previousDeploymentKey || config.deploymentKey;
   try {
