@@ -247,7 +247,7 @@ public class CodePushUtils {
     }
 
     public static void log(String message) {
-        Log.d(CodePushConstants.REACT_NATIVE_LOG_TAG, "[CodePush] " + message);
+        Log.i(CodePushConstants.REACT_NATIVE_LOG_TAG, "[CodePush] " + message);
     }
 
     public static void log(Throwable tr) {
@@ -255,7 +255,7 @@ public class CodePushUtils {
     }
 
     public static void log(String message, JSONObject jsonObject) {
-        Log.d(CodePushConstants.REACT_NATIVE_LOG_TAG, "[DS-CodePush] " + message + " " + (jsonObject != null ? jsonObject.toString() : "null"));
+        Log.i(CodePushConstants.REACT_NATIVE_LOG_TAG, "[DS-CodePush] " + message + " " + (jsonObject != null ? jsonObject.toString() : "null"));
     }
 
     public static void logBundleUrl(String path) {

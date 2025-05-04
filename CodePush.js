@@ -182,6 +182,7 @@ async function notifyApplicationReadyInternal() {
 
 async function tryReportStatus(statusReport, retryOnAppResume) {
   const config = await getConfiguration();
+  log(`Configuration set before report(${config})`);
   const previousLabelOrAppVersion = statusReport.previousLabelOrAppVersion;
   const previousDeploymentKey = statusReport.previousDeploymentKey || config.deploymentKey;
   try {
