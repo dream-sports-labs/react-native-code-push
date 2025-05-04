@@ -240,6 +240,7 @@ public class CodePush implements ReactPackage {
     }
 
     public String getDeploymentKey() {
+        CodePushUtils.log("mDeploymentKey fetched :: "+ mDeploymentKey);
         return mDeploymentKey;
     }
 
@@ -298,6 +299,7 @@ public class CodePush implements ReactPackage {
     }
 
     public String getServerUrl() {
+        CodePushUtils.log("mServerUrl fetched :: "+ mServerUrl);
         return mServerUrl;
     }
 
