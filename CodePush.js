@@ -19,7 +19,7 @@ async function checkForUpdate(deploymentKey = null, handleBinaryVersionMismatchC
    * different from the CodePush update they have already installed.
    */
   const nativeConfig = await getConfiguration();
-  log(`nativeConfig during update check (${nativeConfig})`);
+  log(`nativeConfig during update check: ${JSON.stringify(nativeConfig)}`);
   /*
    * If a deployment key was explicitly provided,
    * then let's override the one we retrieved
