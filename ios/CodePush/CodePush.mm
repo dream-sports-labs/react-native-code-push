@@ -5,18 +5,68 @@
 #import <React/RCTEventDispatcher.h>
 #import <React/RCTRootView.h>
 #import <React/RCTUtils.h>
-#else // back compatibility for RN version < 0.40
+#elif __has_include("RCTAssert.h")
 #import "RCTAssert.h"
 #import "RCTBridgeModule.h"
 #import "RCTConvert.h"
 #import "RCTEventDispatcher.h"
 #import "RCTRootView.h"
 #import "RCTUtils.h"
+#else
+// Fallback for standalone library builds
+#import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
+#define RCTAssert(condition, ...) NSAssert(condition, __VA_ARGS__)
+#define RCTAssertParam(name) RCTAssert(name, @"Parameter '%s' is required", #name)
+#define RCTLogInfo(...) NSLog(__VA_ARGS__)
+#define RCTLogWarn(...) NSLog(__VA_ARGS__)
+#define RCTLogError(...) NSLog(__VA_ARGS__)
+#define RCT_EXPORT_MODULE() + (NSString *)moduleName { return @"CodePush"; }
+#define RCT_EXPORT_METHOD(method) - (void)method
+
+// Fallback type definitions
+typedef void (^RCTPromiseResolveBlock)(id result);
+typedef void (^RCTPromiseRejectBlock)(NSString *code, NSString *message, NSError *error);
+typedef void (^RCTFrameUpdateObserverBlock)(void);
+
+@interface RCTBridge : NSObject
+@property (nonatomic, strong) NSURL *bundleURL;
+- (void)reload;
+- (void)setValue:(id)value forKey:(NSString *)key;
+@end
+
+@interface RCTFrameUpdate : NSObject
+@end
+
+// Fallback functions
+static void RCTFatal(NSError *error) {
+    NSLog(@"RCTFatal: %@", error);
+}
+
+static UIApplication* RCTSharedApplication(void) {
+    return [UIApplication sharedApplication];
+}
+#endif
+
+#ifdef RCT_NEW_ARCH_ENABLED
+#if __has_include("../build/generated/build/generated/ios/CodePush/CodePush.h")
+#import "../build/generated/build/generated/ios/CodePush/CodePush.h"
+#endif
+#if __has_include(<ReactCommon/RCTTurboModule.h>)
+#import <ReactCommon/RCTTurboModule.h>
+#endif
+#if __has_include(<React/RCTCxxBridgeDelegate.h>)
+#import <React/RCTCxxBridgeDelegate.h>
+#endif
 #endif
 
 #import "CodePush.h"
 
+#if __has_include(<React/RCTBridgeModule.h>) || __has_include("RCTBridgeModule.h")
 @interface CodePush () <RCTBridgeModule, RCTFrameUpdateObserver>
+#else
+@interface CodePush ()
+#endif
 @end
 
 @implementation CodePush {
@@ -35,6 +85,27 @@
     BOOL _allowed;
     BOOL _restartInProgress;
     NSMutableArray *_restartQueue;
+    
+    // Bridge module properties
+    dispatch_queue_t _methodQueue;
+    RCTBridge *_bridge;
+    BOOL _paused;
+    RCTFrameUpdateObserverBlock _pauseCallback;
+}
+
+#if __has_include(<React/RCTBridgeModule.h>) || __has_include("RCTBridgeModule.h")
+@synthesize methodQueue = _methodQueue;
+@synthesize pauseCallback = _pauseCallback;
+@synthesize paused = _paused;
+@synthesize bridge = _bridge;
+#endif
+
+- (RCTBridge *)bridge {
+    return _bridge;
+}
+
+- (void)setBridge:(RCTBridge *)bridge {
+    _bridge = bridge;
 }
 
 RCT_EXPORT_MODULE()
@@ -253,10 +324,6 @@ static NSString *const LatestRollbackCountKey = @"count";
 
 #pragma mark - Private API methods
 
-@synthesize methodQueue = _methodQueue;
-@synthesize pauseCallback = _pauseCallback;
-@synthesize paused = _paused;
-
 - (void)setPaused:(BOOL)paused
 {
     if (_paused != paused) {
@@ -276,7 +343,7 @@ static NSString *const LatestRollbackCountKey = @"count";
 - (void)clearDebugUpdates
 {
     dispatch_async(dispatch_get_main_queue(), ^{
-        if ([super.bridge.bundleURL.scheme hasPrefix:@"http"]) {
+        if ([self.bridge.bundleURL.scheme hasPrefix:@"http"]) {
             NSError *error;
             NSString *binaryAppVersion = [[CodePushConfig current] appVersion];
             NSDictionary *currentPackageMetadata = [CodePushPackage getCurrentPackage:&error];
@@ -311,6 +378,26 @@ static NSString *const LatestRollbackCountKey = @"count";
              @"codePushUpdateStateLatest": @(CodePushUpdateStateLatest)
             };
 };
+
+#ifdef RCT_NEW_ARCH_ENABLED
+#if __has_include("../build/generated/build/generated/ios/CodePush/CodePush.h")
+#import "../build/generated/build/generated/ios/CodePush/CodePush.h"
+#endif
+#if __has_include(<ReactCommon/RCTTurboModule.h>)
+#import <ReactCommon/RCTTurboModule.h>
+#endif
+#if __has_include(<React/RCTCxxBridgeDelegate.h>)
+#import <React/RCTCxxBridgeDelegate.h>
+#endif
+#endif
+
+#ifdef RCT_NEW_ARCH_ENABLED
+- (std::shared_ptr<facebook::react::TurboModule>)getTurboModule:
+    (const facebook::react::ObjCTurboModule::InitParams &)params
+{
+    return std::make_shared<facebook::react::NativeCodePushSpecJSI>(params);
+}
+#endif
 
 + (BOOL)requiresMainQueueSetup
 {
@@ -428,6 +515,11 @@ static NSString *const LatestRollbackCountKey = @"count";
     return latestRollbackInfo;
 }
 
++ (NSDictionary*)getRollbackInfo
+{
+    return [self getLatestRollbackInfo];
+}
+
 /*
  * This method is used to save information about the latest rollback.
  * This information will be used to decide whether the application
@@ -536,11 +628,11 @@ static NSString *const LatestRollbackCountKey = @"count";
         // is debugging and therefore, shouldn't be redirected to a local
         // file (since Chrome wouldn't support it). Otherwise, update
         // the current bundle URL to point at the latest update
-        if ([CodePush isUsingTestConfiguration] || ![super.bridge.bundleURL.scheme hasPrefix:@"http"]) {
-            [super.bridge setValue:[CodePush bundleURL] forKey:@"bundleURL"];
+        if ([CodePush isUsingTestConfiguration] || ![self.bridge.bundleURL.scheme hasPrefix:@"http"]) {
+            [self.bridge setValue:[CodePush bundleURL] forKey:@"bundleURL"];
         }
 
-        [super.bridge reload];
+        [self.bridge reload];
     });
 }
 
@@ -726,6 +818,7 @@ RCT_EXPORT_METHOD(downloadUpdate:(NSDictionary*)updatePackage
 
     NSString * publicKey = [[CodePushConfig current] publicKey];
 
+    __weak typeof(self) weakSelf = self;
     [CodePushPackage
         downloadPackage:mutableUpdatePackage
         expectedBundleFileName:[bundleResourceName stringByAppendingPathExtension:bundleResourceExtension]
@@ -733,17 +826,20 @@ RCT_EXPORT_METHOD(downloadUpdate:(NSDictionary*)updatePackage
         operationQueue:_methodQueue
         // The download is progressing forward
         progressCallback:^(long long expectedContentLength, long long receivedContentLength) {
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) return;
+            
             // Update the download progress so that the frame observer can notify the JS side
-            _latestExpectedContentLength = expectedContentLength;
-            _latestReceivedConentLength = receivedContentLength;
-            _didUpdateProgress = YES;
+            strongSelf->_latestExpectedContentLength = expectedContentLength;
+            strongSelf->_latestReceivedConentLength = receivedContentLength;
+            strongSelf->_didUpdateProgress = YES;
 
             // If the download is completed, stop observing frame
             // updates and synchronously send the last event.
             if (expectedContentLength == receivedContentLength) {
-                _didUpdateProgress = NO;
-                self.paused = YES;
-                [self dispatchDownloadProgressEvent];
+                strongSelf->_didUpdateProgress = NO;
+                strongSelf.paused = YES;
+                [strongSelf dispatchDownloadProgressEvent];
             }
         }
         // The download completed
@@ -758,13 +854,17 @@ RCT_EXPORT_METHOD(downloadUpdate:(NSDictionary*)updatePackage
         }
         // The download failed
         failCallback:^(NSError *err) {
+            __weak typeof(self) weakSelf = self;
             if ([CodePushErrorUtils isCodePushError:err]) {
-                [self saveFailedUpdate:mutableUpdatePackage];
+                [weakSelf saveFailedUpdate:mutableUpdatePackage];
             }
 
             // Stop observing frame updates if the download fails.
-            _didUpdateProgress = NO;
-            self.paused = YES;
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (strongSelf) {
+                strongSelf->_didUpdateProgress = NO;
+                strongSelf.paused = YES;
+            }
             reject([NSString stringWithFormat: @"%lu", (long)err.code], err.localizedDescription, err);
         }];
 }
@@ -1117,5 +1217,13 @@ RCT_EXPORT_METHOD(saveStatusReportForRetry:(NSDictionary *)statusReport)
     [self dispatchDownloadProgressEvent];
     _didUpdateProgress = NO;
 }
+
+#ifdef RCT_NEW_ARCH_ENABLED
+- (std::shared_ptr<facebook::react::TurboModule>)getTurboModule:
+    (const facebook::react::ObjCTurboModule::InitParams &)params
+{
+    return std::make_shared<facebook::react::NativeCodePushSpecJSI>(params);
+}
+#endif
 
 @end

@@ -156,6 +156,11 @@ public class CodePushUpdateManager {
         }
 
         String downloadUrlString = updatePackage.optString(CodePushConstants.DOWNLOAD_URL_KEY, null);
+
+        if (downloadUrlString != null && downloadUrlString.contains("localhost")) {
+            downloadUrlString = downloadUrlString.replace("localhost", "10.0.2.2");
+        }
+        
         HttpURLConnection connection = null;
         BufferedInputStream bin = null;
         FileOutputStream fos = null;
@@ -238,11 +243,13 @@ public class CodePushUpdateManager {
                     CodePushConstants.DIFF_MANIFEST_FILE_NAME);
             boolean isDiffUpdate = FileUtils.fileAtPathExists(diffManifestFilePath);
             if (isDiffUpdate) {
+                CodePushUtils.log("[verbose] Diff manifest detected at " + diffManifestFilePath + ". Performing standard diff merge.");
                 String currentPackageFolderPath = getCurrentPackageFolderPath();
                 CodePushUpdateUtils.copyNecessaryFilesFromCurrentPackage(diffManifestFilePath, currentPackageFolderPath, newUpdateFolderPath);
                 File diffManifestFile = new File(diffManifestFilePath);
                 diffManifestFile.delete();
             }
+            CodePushUtils.log("[verbose] Proceeding with copyDirectoryContents; isDiffUpdate=" + isDiffUpdate);
 
             FileUtils.copyDirectoryContents(unzippedFolderPath, newUpdateFolderPath);
             FileUtils.deleteFileAtPathSilently(unzippedFolderPath);
@@ -301,6 +308,9 @@ public class CodePushUpdateManager {
         } else {
             // File is a jsbundle, move it to a folder with the packageHash as its name
             FileUtils.moveFile(downloadFile, newUpdateFolderPath, expectedBundleFileName);
+            // For non-zip (full) updates, remember the bundle file name so that
+            // CodePush can locate it on the next restart.
+            CodePushUtils.setJSONValueForKey(updatePackage, CodePushConstants.RELATIVE_BUNDLE_PATH_KEY, expectedBundleFileName);
         }
 
         // Save metadata to the folder.

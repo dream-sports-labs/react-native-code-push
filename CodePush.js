@@ -584,7 +584,12 @@ function codePushify(options = {}) {
       }
     }
 
-    return hoistStatics(CodePushComponent, RootComponent);
+    // RN 0.75 bridgeless triggers a crash because hoist-non-react-statics can copy
+    // a React element-valued static (e.g. default export) which ends up rendered
+    // as a plain child inside <Text>, leading to "Objects are not valid as a React child".
+    // Returning the wrapper component directly avoids copying those problematic statics
+    // and still preserves CodePush behaviour.
+    return CodePushComponent;
   }
 
   if (typeof options === "function") {

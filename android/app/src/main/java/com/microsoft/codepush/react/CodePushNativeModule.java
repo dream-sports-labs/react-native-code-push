@@ -20,9 +20,11 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.WritableMap;
-import com.facebook.react.modules.core.ChoreographerCompat;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
-import com.facebook.react.modules.core.ReactChoreographer;
+import com.facebook.react.module.annotations.ReactModule;
+
+// Import the generated spec for TurboModule support
+// import com.facebook.fbreact.specs.NativeCodePushSpec;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -37,7 +39,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+@ReactModule(name = CodePushNativeModule.NAME)
 public class CodePushNativeModule extends ReactContextBaseJavaModule {
+    public static final String NAME = "CodePush";
     private String mBinaryContentsHash = null;
     private String mClientUniqueId = null;
     private LifecycleEventListener mLifecycleEventListener = null;
@@ -89,7 +93,7 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
 
     @Override
     public String getName() {
-        return "CodePush";
+        return NAME;
     }
 
     private void loadBundleLegacy() {
@@ -295,7 +299,11 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
                 try {
                     JSONObject mutableUpdatePackage = CodePushUtils.convertReadableToJsonObject(updatePackage);
                     CodePushUtils.setJSONValueForKey(mutableUpdatePackage, CodePushConstants.BINARY_MODIFIED_TIME_KEY, "" + mCodePush.getBinaryResourcesModifiedTime());
-                    mUpdateManager.downloadPackage(mutableUpdatePackage, mCodePush.getAssetsBundleFileName(), new DownloadProgressCallback() {
+                    String bundleFileName = mCodePush.getAssetsBundleFileName();
+                    if (bundleFileName == null) {
+                        bundleFileName = CodePushConstants.DEFAULT_JS_BUNDLE_NAME;
+                    }
+                    mUpdateManager.downloadPackage(mutableUpdatePackage, bundleFileName, new DownloadProgressCallback() {
                         private boolean hasScheduledNextFrame = false;
                         private DownloadProgress latestDownloadProgress = null;
 
@@ -317,21 +325,16 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
                             }
 
                             hasScheduledNextFrame = true;
-                            getReactApplicationContext().runOnUiQueueThread(new Runnable() {
+                            Handler uiHandler = new Handler(Looper.getMainLooper());
+                            uiHandler.postDelayed(new Runnable() {
                                 @Override
                                 public void run() {
-                                    ReactChoreographer.getInstance().postFrameCallback(ReactChoreographer.CallbackType.TIMERS_EVENTS, new ChoreographerCompat.FrameCallback() {
-                                        @Override
-                                        public void doFrame(long frameTimeNanos) {
-                                            if (!latestDownloadProgress.isCompleted()) {
-                                                dispatchDownloadProgressEvent();
-                                            }
-
-                                            hasScheduledNextFrame = false;
-                                        }
-                                    });
+                                    if (!latestDownloadProgress.isCompleted()) {
+                                        dispatchDownloadProgressEvent();
+                                    }
+                                    hasScheduledNextFrame = false;
                                 }
-                            });
+                            }, 16); // ~60fps
                         }
 
                         public void dispatchDownloadProgressEvent() {

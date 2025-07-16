@@ -44,6 +44,8 @@
     "xcode": "3.0.1"
   },
   "devDependencies": {
+    "@react-native/codegen": "^0.80.1",
+    "@react-native-community/cli": "latest",
     "@types/assert": "^1.5.2",
     "@types/mkdirp": "^1.0.1",
     "@types/mocha": "^9.0.0",
@@ -57,6 +59,7 @@
     "mkdirp": "latest",
     "mocha": "^9.2.0",
     "q": "^1.5.1",
+    "react-native": "^0.80.1",
     "run-sequence": "latest",
     "shx": "^0.3.4",
     "slash": "^3.0.0",
@@ -76,5 +79,20 @@
       "postlink": "node node_modules/react-native-code-push/scripts/postlink/run",
       "postunlink": "node node_modules/react-native-code-push/scripts/postunlink/run"
     }
-  }
+  },
+  "codegenConfig": {
+    "name": "CodePush",
+    "type": "modules",
+    "jsSrcsDir": "src",
+    "android": {
+      "javaPackageName": "com.microsoft.codepush.react"
+    },
+    "ios": {
+      "libraryName": "React-CodePushSpec"
+    }
+  },
+    "workspaces": [
+      "Examples/*"
+    ]
+  
 }

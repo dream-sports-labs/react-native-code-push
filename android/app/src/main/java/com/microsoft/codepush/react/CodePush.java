@@ -249,10 +249,13 @@ public class CodePush implements ReactPackage {
     public String getJSBundleFileInternal(String assetsBundleFileName) {
         this.mAssetsBundleFileName = assetsBundleFileName;
         String binaryJsBundleUrl = CodePushConstants.ASSETS_BUNDLE_PREFIX + assetsBundleFileName;
+        // DEBUG: log entry and paths being considered
+        CodePushUtils.log("[verbose] getJSBundleFileInternal called. assetsBundleFileName=" + assetsBundleFileName);
 
         String packageFilePath = null;
         try {
             packageFilePath = mUpdateManager.getCurrentPackageBundlePath(this.mAssetsBundleFileName);
+            CodePushUtils.log("[verbose] Current package bundle path from UpdateManager: " + packageFilePath);
         } catch (CodePushMalformedDataException e) {
             // We need to recover the app in case 'codepush.json' is corrupted
             CodePushUtils.log(e.getMessage());
@@ -262,13 +265,16 @@ public class CodePush implements ReactPackage {
         if (packageFilePath == null) {
             // There has not been any downloaded updates.
             CodePushUtils.logBundleUrl(binaryJsBundleUrl);
+            CodePushUtils.log("[verbose] No downloaded update found – using binary bundle.");
             sIsRunningBinaryVersion = true;
             return binaryJsBundleUrl;
         }
 
         JSONObject packageMetadata = this.mUpdateManager.getCurrentPackage();
+        CodePushUtils.log("[verbose] Current package metadata inside getJSBundleFileInternal: " + packageMetadata);
         if (isPackageBundleLatest(packageMetadata)) {
             CodePushUtils.logBundleUrl(packageFilePath);
+            CodePushUtils.log("[verbose] Using CodePush package bundle: " + packageFilePath);
             sIsRunningBinaryVersion = false;
             return packageFilePath;
         } else {
@@ -313,11 +319,29 @@ public class CodePush implements ReactPackage {
             try {
                 boolean updateIsLoading = pendingUpdate.getBoolean(CodePushConstants.PENDING_UPDATE_IS_LOADING_KEY);
                 if (updateIsLoading) {
-                    // Pending update was initialized, but notifyApplicationReady was not called.
-                    // Therefore, deduce that it is a broken update and rollback.
-                    CodePushUtils.log("Update did not finish loading the last time, rolling back to a previous version.");
-                    sNeedToReportRollback = true;
-                    rollbackPackage();
+                    // Pending update is marked as loading. Instead of rolling back immediately,
+                    // give the JS bundle a short window to start and call notifyAppReady().
+                    final SettingsManager settingsRef = mSettingsManager;
+                    final CodePush self = this;
+                    new android.os.Handler(android.os.Looper.getMainLooper())
+                            .postDelayed(new Runnable() {
+                                @Override
+                                public void run() {
+                                    JSONObject pending = settingsRef.getPendingUpdate();
+                                    if (pending != null) {
+                                        try {
+                                            if (pending.getBoolean(CodePushConstants.PENDING_UPDATE_IS_LOADING_KEY)) {
+                                                CodePushUtils.log("Update failed to load within timeout, rolling back.");
+                                                sNeedToReportRollback = true;
+                                                self.rollbackPackage();
+                                            }
+                                        } catch (Exception e) {
+                                            CodePushUtils.log("Error checking pending update loading flag: " + e.getMessage());
+                                        }
+                                    }
+                                }
+                            }, CodePushConstants.UPDATE_LOAD_TIMEOUT_MS);
+                    // Continue startup; JS will clear the flag if it loads successfully.
                 } else {
                     // There is in fact a new update running for the first
                     // time, so update the local state to ensure the client knows.

@@ -2,13 +2,43 @@
 #import <React/RCTEventEmitter.h>
 #elif __has_include("RCTEventEmitter.h")
 #import "RCTEventEmitter.h"
+#elif __has_include("React/RCTEventEmitter.h")
+#import "React/RCTEventEmitter.h"
 #else
-#import "React/RCTEventEmitter.h"   // Required when used as a Pod in a Swift project
+// For standalone library builds without React Native
+#import <Foundation/Foundation.h>
+@class RCTBridge;
+@class RCTFrameUpdate;
+@protocol RCTBridgeModule <NSObject>
+@optional
++ (NSString *)moduleName;
+@property (nonatomic, weak, readonly) RCTBridge *bridge;
+@property (nonatomic, strong, readonly) dispatch_queue_t methodQueue;
+@end
+
+@protocol RCTFrameUpdateObserver <NSObject>
+@optional
+- (void)didUpdateFrame:(RCTFrameUpdate *)update;
+@end
+
+@interface RCTEventEmitter : NSObject
+- (void)sendEventWithName:(NSString *)eventName body:(id)body;
+@end
+#endif
+
+#ifdef RCT_NEW_ARCH_ENABLED
+#if __has_include("../build/generated/build/generated/ios/CodePush/CodePush.h")
+#import "../build/generated/build/generated/ios/CodePush/CodePush.h"
+#endif
 #endif
 
 #import <Foundation/Foundation.h>
 
+#ifdef RCT_NEW_ARCH_ENABLED
+@interface CodePush : RCTEventEmitter <NativeCodePushSpec>
+#else
 @interface CodePush : RCTEventEmitter
+#endif
 
 + (NSURL *)binaryBundleURL;
 /*

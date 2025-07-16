@@ -1,9 +1,17 @@
 apply plugin: "com.android.library"
+apply plugin: "com.facebook.react"
 
-def DEFAULT_COMPILE_SDK_VERSION = 26
-def DEFAULT_BUILD_TOOLS_VERSION = "26.0.3"
-def DEFAULT_TARGET_SDK_VERSION = 26
-def DEFAULT_MIN_SDK_VERSION = 16
+react {
+    // Let the RN Gradle plugin know this is a native library that requires codegen. The value must
+    // match the JS spec name so the generated C++ target is `react_codegen_CodePush` which the
+    // autolinking CMake expects.
+    libraryName = "CodePush"
+}
+
+def DEFAULT_COMPILE_SDK_VERSION = 33
+def DEFAULT_BUILD_TOOLS_VERSION = "33.0.0"
+def DEFAULT_TARGET_SDK_VERSION = 33
+def DEFAULT_MIN_SDK_VERSION = 21
 
 android {
     namespace "com.microsoft.codepush.react"
@@ -14,6 +22,7 @@ android {
     defaultConfig {
         minSdkVersion rootProject.hasProperty('minSdkVersion') ? rootProject.minSdkVersion : DEFAULT_MIN_SDK_VERSION
         targetSdkVersion rootProject.hasProperty('targetSdkVersion') ? rootProject.targetSdkVersion : DEFAULT_TARGET_SDK_VERSION
+        buildConfigField "boolean", "IS_NEW_ARCHITECTURE_ENABLED", "true"
         versionCode 1
         versionName "1.0"
     }

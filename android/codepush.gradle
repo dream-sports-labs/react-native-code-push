@@ -3,7 +3,7 @@
 import java.nio.file.Paths;
 
 def config = project.extensions.findByName("react") ?: [:]
-def bundleAssetName = config.bundleAssetName ? config.bundleAssetName.get() : "index.android.bundle"
+def bundleAssetName = project.hasProperty("bundleAssetName") ? project.bundleAssetName : "index.android.bundle"
 
 // because elvis operator
 def elvisFile(thing) {
