@@ -401,6 +401,11 @@ public class CodePushUpdateManager {
         }
 
         File binaryBundle = new File(binaryBundleDir, CodePushConstants.DEFAULT_JS_BUNDLE_NAME);
+        // This is done to prevent using old binary bundle in case of new apk updates.
+        if (binaryBundle.exists()) {
+            CodePushUtils.log("Patch Process: Deleting existing binary bundle.");
+            binaryBundle.delete();
+        }
         if (!binaryBundle.exists()) {
             CodePushUtils.log("Patch Process: Copying original bundle from assets.");
             InputStream input = null;
