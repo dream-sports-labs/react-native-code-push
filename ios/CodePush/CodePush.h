@@ -166,6 +166,7 @@ failCallback:(void (^)(NSError *err))failCallback;
 // The below methods are only used during tests.
 + (void)clearUpdates;
 + (void)downloadAndReplaceCurrentBundle:(NSString *)remoteBundleUrl;
++ (NSString *)getCodePushPath;
 
 @end
 
@@ -189,6 +190,7 @@ failCallback:(void (^)(NSError *err))failCallback;
 + (NSString *)findMainBundleInFolder:(NSString *)folderPath
                     expectedFileName:(NSString *)expectedFileName
                                error:(NSError **)error;
++ (void)applyPatch:(NSString *)newUpdateFolderPath expectedFileName:(NSString *)expectedFileName error:(NSError **)error;
 
 + (NSString *)assetsFolderName;
 + (NSString *)getHashForBinaryContents:(NSURL *)binaryBundleUrl

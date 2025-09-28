@@ -14,12 +14,14 @@ Pod::Spec.new do |s|
   s.tvos.deployment_target = '9.0'
   s.preserve_paths = '*.js'
   s.library        = 'z'
-  s.source_files = 'ios/CodePush/*.{h,m}'
+  s.source_files = 'ios/CodePush/*.{h,m,mm}', "cpp/**/*.{hpp,cpp,c,h}"
   s.public_header_files = ['ios/CodePush/CodePush.h']
   s.module_name = 'CodePush'
   s.pod_target_xcconfig = {
     'DEFINES_MODULE' => 'YES',
-    'SWIFT_INSTALL_OBJC_HEADER' => 'NO'
+    'SWIFT_INSTALL_OBJC_HEADER' => 'NO',
+    'CLANG_CXX_LANGUAGE_STANDARD' => 'c++11',
+    'CLANG_CXX_LIBRARY' => 'libc++'
   }
 
   # Note: Even though there are copy/pasted versions of some of these dependencies in the repo, 

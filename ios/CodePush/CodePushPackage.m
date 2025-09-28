@@ -16,6 +16,7 @@ static NSString *const StatusFile = @"codepush.json";
 static NSString *const UpdateBundleFileName = @"app.jsbundle";
 static NSString *const UpdateMetadataFileName = @"app.json";
 static NSString *const UnzippedFolderName = @"unzipped";
+static BOOL const isBundlePatchingEnabled = true;
 
 #pragma mark - Public methods
 
@@ -206,7 +207,17 @@ static NSString *const UnzippedFolderName = @"unzipped";
                                                             CPLog(@"Error deleting downloaded file: %@", nonFailingError);
                                                             nonFailingError = nil;
                                                         }
-                                                        
+
+                                                        if (isBundlePatchingEnabled) {
+                                                            NSError *patchError = nil;
+                                                            CPLog(@"Apply Patch Called with newUpdateFolderPath: %@", newUpdateFolderPath);
+                                                            [CodePushUpdateUtils applyPatch:newUpdateFolderPath expectedFileName: expectedBundleFileName error:&patchError];
+                                                            if (patchError) {
+                                                                failCallback(patchError);
+                                                                return;
+                                                            }
+                                                        }
+                                                            
                                                         NSString *relativeBundlePath = [CodePushUpdateUtils findMainBundleInFolder:newUpdateFolderPath
                                                                                                                   expectedFileName:expectedBundleFileName
                                                                                                                              error:&error];
@@ -309,16 +320,42 @@ static NSString *const UnzippedFolderName = @"unzipped";
                                                             }
                                                         }
                                                     } else {
-                                                        [[NSFileManager defaultManager] createDirectoryAtPath:newUpdateFolderPath
-                                                                                  withIntermediateDirectories:YES
-                                                                                                   attributes:nil
-                                                                                                        error:&error];
-                                                        [[NSFileManager defaultManager] moveItemAtPath:downloadFilePath
-                                                                                                toPath:bundleFilePath
-                                                                                                 error:&error];
-                                                        if (error) {
-                                                            failCallback(error);
-                                                            return;
+                                                        if (isBundlePatchingEnabled) {
+                                                            
+                                                            [[NSFileManager defaultManager] createDirectoryAtPath:newUpdateFolderPath
+                                                                                      withIntermediateDirectories:YES
+                                                                                                       attributes:nil
+                                                                                                            error:&error];
+                                                            NSString *patchFilePath = [newUpdateFolderPath stringByAppendingPathComponent:@"bundle.patch"];
+                                                            [[NSFileManager defaultManager] moveItemAtPath:downloadFilePath
+                                                                                                    toPath:patchFilePath
+                                                                                                     error:&error];
+                                                            if (error) {
+                                                                failCallback(error);
+                                                                return;
+                                                            }
+                                                            
+                                                            NSError *patchError = nil;
+                                                            CPLog(@"Apply Patch Called with newUpdateFolderPath: %@", newUpdateFolderPath);
+                                                            [CodePushUpdateUtils applyPatch:newUpdateFolderPath expectedFileName:UpdateBundleFileName error:&patchError];
+                                                            if (patchError) {
+                                                                failCallback(patchError);
+                                                                return;
+                                                            }
+                                                            
+                                                            
+                                                        } else {
+                                                            [[NSFileManager defaultManager] createDirectoryAtPath:newUpdateFolderPath
+                                                                                      withIntermediateDirectories:YES
+                                                                                                       attributes:nil
+                                                                                                            error:&error];
+                                                            [[NSFileManager defaultManager] moveItemAtPath:downloadFilePath
+                                                                                                    toPath:bundleFilePath
+                                                                                                     error:&error];
+                                                            if (error) {
+                                                                failCallback(error);
+                                                                return;
+                                                            }
                                                         }
                                                     }
                                                     

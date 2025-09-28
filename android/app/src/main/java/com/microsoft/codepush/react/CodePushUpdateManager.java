@@ -49,7 +49,7 @@ public class CodePushUpdateManager {
             }
         }
 
-        return BsDiffPatchLoader.getInstance().bsPatchFile(oldFile, newFile, patchFile);
+        return BsDiffPatchLoader.nativeBsPatchFile(oldFile, newFile, patchFile);
     }
 
     public CodePushUpdateManager(String documentsDirectory) {
