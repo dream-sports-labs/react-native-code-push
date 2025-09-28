@@ -34,4 +34,5 @@ public class CodePushConstants {
     public static final String CLIENT_UNIQUE_ID_KEY = "clientUniqueId";
     public static final String PATCH_BUNDLE_FILE_NAME = "bundle.patch";
     public static final String BINARY_BUNDLE_DIR = "binaryBundle";
+    public static final String IS_BUNDLE_PATCHING_ENABLED = "isBundlePatchingEnabled";
 }

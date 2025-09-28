@@ -16,7 +16,6 @@ static NSString *const StatusFile = @"codepush.json";
 static NSString *const UpdateBundleFileName = @"app.jsbundle";
 static NSString *const UpdateMetadataFileName = @"app.json";
 static NSString *const UnzippedFolderName = @"unzipped";
-static BOOL const isBundlePatchingEnabled = true;
 
 #pragma mark - Public methods
 
@@ -55,6 +54,12 @@ static BOOL const isBundlePatchingEnabled = true;
     NSString *newUpdateHash = updatePackage[@"packageHash"];
     NSString *newUpdateFolderPath = [self getPackageFolderPath:newUpdateHash];
     NSString *newUpdateMetadataPath = [newUpdateFolderPath stringByAppendingPathComponent:UpdateMetadataFileName];
+    
+    BOOL isBundlePatchingEnabled = NO;
+    id isBundlePatchingEnabledValue = updatePackage[@"isBundlePatchingEnabled"];
+    if (isBundlePatchingEnabledValue != nil && [isBundlePatchingEnabledValue isKindOfClass:[NSNumber class]]) {
+        isBundlePatchingEnabled = [isBundlePatchingEnabledValue boolValue];
+    }
     NSError *error;
     
     if ([[NSFileManager defaultManager] fileExistsAtPath:newUpdateFolderPath]) {

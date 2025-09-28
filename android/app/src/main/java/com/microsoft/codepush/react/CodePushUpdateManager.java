@@ -23,7 +23,6 @@ import javax.net.ssl.HttpsURLConnection;
 public class CodePushUpdateManager {
 
     private String mDocumentsDirectory;
-    private Boolean isBundlePatchingEnabled = false;
 
     private int bsPatchFile(String oldFile, String newFile, String patchFile) {
         CodePushUtils.log("Applying patch from " + oldFile + " to " + newFile + " with patch file " + patchFile);
@@ -185,12 +184,14 @@ public class CodePushUpdateManager {
                                 DownloadProgressCallback progressCallback,
                                 String stringPublicKey) throws IOException {
         String newUpdateHash = updatePackage.optString(CodePushConstants.PACKAGE_HASH_KEY, null);
+        boolean isBundlePatchingEnabled = updatePackage.optBoolean(CodePushConstants.IS_BUNDLE_PATCHING_ENABLED, false);
         String newUpdateFolderPath = getPackageFolderPath(newUpdateHash);
         String newUpdateMetadataPath = CodePushUtils.appendPathComponent(newUpdateFolderPath, CodePushConstants.PACKAGE_FILE_NAME);
         CodePushUtils.log("DownloadingPackage initiated");
         CodePushUtils.log("newUpdateHash :: " + newUpdateHash);
         CodePushUtils.log("newUpdateFolderPath :: " + newUpdateFolderPath);
         CodePushUtils.log("newUpdateMetadataPath :: " + newUpdateMetadataPath);
+        CodePushUtils.log("isBundlePatchingEnabled: " + isBundlePatchingEnabled);
         if (FileUtils.fileAtPathExists(newUpdateFolderPath)) {
             // This removes any stale data in newPackageFolderPath that could have been left
             // uncleared due to a crash or error during the download or install process.
