@@ -1,8 +1,6 @@
 ## iOS Setup
 
 Once you've acquired the CodePush plugin, you need to integrate it into the Xcode project of your React Native app and configure it correctly. To do this, take the following steps:
-​
-### Plugin Installation and Configuration for React Native 0.60 version and above (iOS)
 
 <details>
 <summary>Objective-C</summary>
@@ -60,6 +58,8 @@ Once you've acquired the CodePush plugin, you need to integrate it into the Xcod
    In order to effectively make use of the `Staging` and `Production` deployments that were created along with your CodePush app, refer to the [multi-deployment testing](../README.md#multi-deployment-testing) docs below before actually moving your app's usage of CodePush into production.
 
    *Note: If you need to dynamically use a different deployment, you can also override your deployment key in JS code using [Code-Push options](./api-js.md#CodePushOptions)*
+
+6. For react-native changes refer to [Plugin Usage](../README.md#plugin-usage)
 </details>
 
 <details>
@@ -121,6 +121,8 @@ Once you've acquired the CodePush plugin, you need to integrate it into the Xcod
    In order to effectively make use of the `Staging` and `Production` deployments that were created along with your CodePush app, refer to the [multi-deployment testing](../README.md#multi-deployment-testing) docs below before actually moving your app's usage of CodePush into production.
 
    *Note: If you need to dynamically use a different deployment, you can also override your deployment key in JS code using [Code-Push options](./api-js.md#CodePushOptions)*
+
+6. For react-native changes refer to [Plugin Usage](../README.md#plugin-usage)
 </details>
 
-For Plugin usage refer to [Plugin Usage](README.md)
+

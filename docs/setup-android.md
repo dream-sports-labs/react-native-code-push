@@ -2,8 +2,6 @@
 
 In order to integrate CodePush into your Android project, please perform the following steps:
 
-### Plugin Installation and Configuration for React Native 0.60 version and above (Android)
-
 1. In your `android/settings.gradle` file, make the following additions at the end of the file:
 
     ```gradle
@@ -11,8 +9,18 @@ In order to integrate CodePush into your Android project, please perform the fol
     include ':app', ':d11_dota'
     project(':d11_dota').projectDir = new File(rootProject.projectDir, '../node_modules/@d11/dota/android/app')
     ```
+
+2. In your `android/app/build.gradle` file, add d11_dota as dependency:
+
+    ```gradle
+    dependencies {
+        ...
+        implementation project(':d11_dota')
+        ...
+    }
+    ```
     
-2. In your `android/app/build.gradle` file, add the `codepush.gradle` file as an additional build task definition to the end of the file:
+3. In your `android/app/build.gradle` file, add the `codepush.gradle` file as an additional build task definition to the end of the file:
 
     ```gradle
     ...
@@ -20,7 +28,7 @@ In order to integrate CodePush into your Android project, please perform the fol
     ...
     ```
 
-3. Update the `MainApplication` file to use CodePush via the following changes:
+4. Update the `MainApplication` file to use CodePush via the following changes:
 
     For React Native 0.73 and above: update the `MainApplication.kt`
 
@@ -80,7 +88,7 @@ In order to integrate CodePush into your Android project, please perform the fol
     }
     ```
 
-4. Add the Deployment key and server url to `strings.xml`:
+5. Add the Deployment key and server url to `strings.xml`:
 
    To let the CodePush runtime know which deployment it should query for updates, open your app's `strings.xml` file and add a new string named `CodePushDeploymentKey`, whose value is the key of the deployment you want to configure this app against (like the key for the `Staging` deployment for the `FooBar` app). You can retrieve this value using DOTA dashboard and copying the value of the `Key` column which corresponds to the deployment you want to use.
 
@@ -98,4 +106,17 @@ In order to integrate CodePush into your Android project, please perform the fol
 
     *Note: If you need to dynamically use a different deployment, you can also override your deployment key in JS code using [Code-Push options](./api-js.md#CodePushOptions)*
 
-For Plugin usage refer to [Plugin Usage](README.md)
+6. Disable autolinking for `@d11/dota` by adding a `react-native.config.js` at your app root:
+
+```javascript
+module.exports = {
+  dependencies: {
+    '@d11/dota': {
+      platforms: {
+        android: null,
+      },
+    },
+  },
+};
+```
+7. For react-native changes refer to [Plugin Usage](../README.md#plugin-usage)
