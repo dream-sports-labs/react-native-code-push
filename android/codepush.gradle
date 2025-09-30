@@ -164,7 +164,7 @@ gradle.projectsEvaluated {
             from resourcesDir
             
             // Set the destination directory
-            into "$projectDir/../../.codepush"
+            into "$projectDir/../../.dota/android"
 
             // Ensure the copy task runs after the bundle and assets are created
             dependsOn "createBundle${targetName}JsAndAssets"
