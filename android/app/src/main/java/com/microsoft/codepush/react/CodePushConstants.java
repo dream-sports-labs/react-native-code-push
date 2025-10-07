@@ -13,6 +13,7 @@ public class CodePushConstants {
     public static final int DOWNLOAD_BUFFER_SIZE = 1024 * 256;
     public static final String DOWNLOAD_FILE_NAME = "download.zip";
     public static final String DOWNLOAD_PROGRESS_EVENT_NAME = "CodePushDownloadProgress";
+    public static final String DOWNLOAD_STATUS_EVENT_NAME = "CodePushDownloadStatus";
     public static final String DOWNLOAD_URL_KEY = "downloadUrl";
     public static final String FAILED_UPDATES_KEY = "CODE_PUSH_FAILED_UPDATES";
     public static final String PACKAGE_FILE_NAME = "app.json";
@@ -35,4 +36,7 @@ public class CodePushConstants {
     public static final String PATCH_BUNDLE_FILE_NAME = "bundle.patch";
     public static final String BINARY_BUNDLE_DIR = "binaryBundle";
     public static final String IS_BUNDLE_PATCHING_ENABLED = "isBundlePatchingEnabled";
+    public static final String PATCH_APPLIED_SUCCESS = "PATCH_APPLIED_SUCCESS";
+    public static final String DOWNLOAD_REQUEST_SUCCESS = "DOWNLOAD_REQUEST_SUCCESS";
+    public static final String UNZIPPED_SUCCESS = "UNZIPPED_SUCCESS";
 }

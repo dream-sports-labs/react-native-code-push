@@ -3,6 +3,9 @@ package com.microsoft.codepush.react;
 import android.os.Build;
 
 import com.facebook.react.bridge.ReactApplicationContext;
+import com.facebook.react.bridge.ReactContext;
+import com.facebook.react.bridge.WritableMap;
+import com.facebook.react.bridge.WritableNativeMap;
 
 import org.json.JSONObject;
 
@@ -78,6 +81,12 @@ public class CodePushUpdateManager {
 
     private String getStatusFilePath() {
         return CodePushUtils.appendPathComponent(getCodePushPath(), CodePushConstants.STATUS_FILE);
+    }
+
+    private void emitDownloadStatusEvent(ReactApplicationContext context, String eventName) {
+        WritableMap map = new WritableNativeMap();
+        map.putString("name", eventName);
+        context.getJSModule(ReactContext.RCTDeviceEventEmitter.class).emit(CodePushConstants.DOWNLOAD_STATUS_EVENT_NAME, map);
     }
 
     public JSONObject getCurrentPackageInfo() {
@@ -184,7 +193,7 @@ public class CodePushUpdateManager {
                                 DownloadProgressCallback progressCallback,
                                 String stringPublicKey) throws IOException {
         String newUpdateHash = updatePackage.optString(CodePushConstants.PACKAGE_HASH_KEY, null);
-        boolean isBundlePatchingEnabled = updatePackage.optBoolean(CodePushConstants.IS_BUNDLE_PATCHING_ENABLED, false);
+        boolean isBundlePatchingEnabled = updatePackage.optBoolean(CodePushConstants.IS_BUNDLE_PATCHING_ENABLED, true);
         String newUpdateFolderPath = getPackageFolderPath(newUpdateHash);
         String newUpdateMetadataPath = CodePushUtils.appendPathComponent(newUpdateFolderPath, CodePushConstants.PACKAGE_FILE_NAME);
         CodePushUtils.log("DownloadingPackage initiated");
@@ -262,6 +271,8 @@ public class CodePushUpdateManager {
                 throw new CodePushUnknownException("Received " + receivedBytes + " bytes, expected " + totalBytes);
             }
 
+            emitDownloadStatusEvent(context, CodePushConstants.DOWNLOAD_REQUEST_SUCCESS);
+
             isZip = ByteBuffer.wrap(header).getInt() == 0x504b0304;
         } catch (MalformedURLException e) {
             throw new CodePushMalformedDataException(downloadUrlString, e);
@@ -282,6 +293,8 @@ public class CodePushUpdateManager {
             String unzippedFolderPath = getUnzippedFolderPath();
             CodePushUtils.log("unzippedFolderPath  :: "+ unzippedFolderPath);
             FileUtils.unzipFile(downloadFile, unzippedFolderPath);
+
+            emitDownloadStatusEvent(context, CodePushConstants.UNZIPPED_SUCCESS);
             FileUtils.deleteFileOrFolderSilently(downloadFile);
 
             // Merge contents with current update based on the manifest
@@ -378,7 +391,7 @@ public class CodePushUpdateManager {
 
         File binaryBundle = copyOriginalBundle(context);
 
-        applyPatchToBundle(newUpdateFolderPath, findPatchBundleRelativePath, binaryBundle);
+        applyPatchToBundle(newUpdateFolderPath, findPatchBundleRelativePath, binaryBundle, context);
         
         CodePushUtils.log("Patch Process: Patch application completed.");
     }
@@ -439,7 +452,7 @@ public class CodePushUpdateManager {
         return binaryBundle;
     }
 
-    private void applyPatchToBundle(String newUpdateFolderPath, String findPatchBundleRelativePath, File binaryBundle) throws CodePushUnknownException {
+    private void applyPatchToBundle(String newUpdateFolderPath, String findPatchBundleRelativePath, File binaryBundle, ReactApplicationContext context) throws CodePushUnknownException {
         try {
             File patchBundleFile = new File(newUpdateFolderPath, findPatchBundleRelativePath);
             CodePushUtils.log("Patch Process: Applying patch from " + patchBundleFile.getAbsolutePath());
@@ -447,6 +460,7 @@ public class CodePushUpdateManager {
             File modifiedBundleFile = new File(dir, CodePushConstants.DEFAULT_JS_BUNDLE_NAME);
             int result = bsPatchFile(binaryBundle.getAbsolutePath(), modifiedBundleFile.getAbsolutePath(), patchBundleFile.getAbsolutePath());
             if (result == 0) {
+                emitDownloadStatusEvent(context, CodePushConstants.PATCH_APPLIED_SUCCESS);
                 CodePushUtils.log("Patch Process: Patching successful.");
             } else {
                 CodePushUtils.log("Patch Process: Patching failed.");

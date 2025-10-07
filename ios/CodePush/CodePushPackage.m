@@ -4,6 +4,7 @@
 #else
 #import "SSZipArchive.h"
 #endif
+#import <React/RCTEventEmitter.h>
 
 @implementation CodePushPackage
 
@@ -18,6 +19,10 @@ static NSString *const UpdateMetadataFileName = @"app.json";
 static NSString *const UnzippedFolderName = @"unzipped";
 
 #pragma mark - Public methods
+
+- (NSArray<NSString *> *)supportedEvents {
+  return @[@"CodePushDownloadStatus"];
+}
 
 + (void)clearUpdates
 {
@@ -43,6 +48,11 @@ static NSString *const UnzippedFolderName = @"unzipped";
     }
 }
 
++ (void)dispatchDownloadStatusEvent:(NSString *)eventName context:(RCTEventEmitter *)context {
+    [context sendEventWithName:@"CodePushDownloadStatus"
+                        body:@{@"name": eventName}];
+}
+
 + (void)downloadPackage:(NSDictionary *)updatePackage
  expectedBundleFileName:(NSString *)expectedBundleFileName
               publicKey:(NSString *)publicKey
@@ -50,6 +60,7 @@ static NSString *const UnzippedFolderName = @"unzipped";
        progressCallback:(void (^)(long long, long long))progressCallback
            doneCallback:(void (^)())doneCallback
            failCallback:(void (^)(NSError *err))failCallback
+           eventEmitter:(RCTEventEmitter *)eventEmitter
 {
     NSString *newUpdateHash = updatePackage[@"packageHash"];
     NSString *newUpdateFolderPath = [self getPackageFolderPath:newUpdateHash];
@@ -91,6 +102,7 @@ static NSString *const UnzippedFolderName = @"unzipped";
                                                 operationQueue:operationQueue
                                                 progressCallback:progressCallback
                                                 doneCallback:^(BOOL isZip) {
+                                                    [CodePushPackage dispatchDownloadStatusEvent:@"DOWNLOAD_REQUEST_SUCCESS" context:eventEmitter];
                                                     NSError *error = nil;
                                                     NSString * unzippedFolderPath = [CodePushPackage getUnzippedFolderPath];
                                                     NSMutableDictionary * mutableUpdatePackage = [updatePackage mutableCopy];
@@ -109,6 +121,7 @@ static NSString *const UnzippedFolderName = @"unzipped";
                                                         NSError *nonFailingError = nil;
                                                         [SSZipArchive unzipFileAtPath:downloadFilePath
                                                                         toDestination:unzippedFolderPath];
+                                                        [CodePushPackage dispatchDownloadStatusEvent:@"UNZIPPED_SUCCESS" context:eventEmitter];
                                                         [[NSFileManager defaultManager] removeItemAtPath:downloadFilePath
                                                                                                    error:&nonFailingError];
                                                         if (nonFailingError) {
@@ -217,6 +230,7 @@ static NSString *const UnzippedFolderName = @"unzipped";
                                                             NSError *patchError = nil;
                                                             CPLog(@"Apply Patch Called with newUpdateFolderPath: %@", newUpdateFolderPath);
                                                             [CodePushUpdateUtils applyPatch:newUpdateFolderPath expectedFileName: expectedBundleFileName error:&patchError];
+                                                            [CodePushPackage dispatchDownloadStatusEvent:@"PATCH_APPLIED_SUCCESS" context:eventEmitter];
                                                             if (patchError) {
                                                                 failCallback(patchError);
                                                                 return;

@@ -362,7 +362,7 @@ const sync = (() => {
  * releases, and displaying a standard confirmation UI to the end-user
  * when an update is available.
  */
-async function syncInternal(options = {}, syncStatusChangeCallback, downloadProgressCallback, handleBinaryVersionMismatchCallback) {
+async function syncInternal(options = {}, syncStatusChangeCallbackFunction, downloadProgressCallback, handleBinaryVersionMismatchCallback) {
   let resolvedInstallMode;
   const syncOptions = {
     deploymentKey: null,
@@ -375,44 +375,49 @@ async function syncInternal(options = {}, syncStatusChangeCallback, downloadProg
     ...options
   };
 
-  syncStatusChangeCallback = typeof syncStatusChangeCallback === "function"
-    ? syncStatusChangeCallback
-    : (syncStatus) => {
-        switch(syncStatus) {
-          case CodePush.SyncStatus.CHECKING_FOR_UPDATE:
-            log("Checking for update.");
-            break;
-          case CodePush.SyncStatus.AWAITING_USER_ACTION:
-            log("Awaiting user action.");
-            break;
-          case CodePush.SyncStatus.DOWNLOADING_PACKAGE:
-            log("Downloading package.");
-            break;
-          case CodePush.SyncStatus.INSTALLING_UPDATE:
-            log("Installing update.");
-            break;
-          case CodePush.SyncStatus.UP_TO_DATE:
-            log("App is up to date.");
-            break;
-          case CodePush.SyncStatus.UPDATE_IGNORED:
-            log("User cancelled the update.");
-            break;
-          case CodePush.SyncStatus.UPDATE_INSTALLED:
-            if (resolvedInstallMode == CodePush.InstallMode.ON_NEXT_RESTART) {
-              log("Update is installed and will be run on the next app restart.");
-            } else if (resolvedInstallMode == CodePush.InstallMode.ON_NEXT_RESUME) {
-              if (syncOptions.minimumBackgroundDuration > 0) {
-                log(`Update is installed and will be run after the app has been in the background for at least ${syncOptions.minimumBackgroundDuration} seconds.`);
-              } else {
-                log("Update is installed and will be run when the app next resumes.");
-              }
-            }
-            break;
-          case CodePush.SyncStatus.UNKNOWN_ERROR:
-            log("An unknown error occurred.");
-            break;
+  const internalSyncStatusChangeCallback = (syncStatus) => {
+    switch(syncStatus) {
+      case CodePush.SyncStatus.CHECKING_FOR_UPDATE:
+        log("Internal Log: Checking for update.");
+        break;
+      case CodePush.SyncStatus.AWAITING_USER_ACTION:
+        log("Internal Log: Awaiting user action.");
+        break;
+      case CodePush.SyncStatus.DOWNLOADING_PACKAGE:
+        log("Internal Log: Downloading package.");
+        break;
+      case CodePush.SyncStatus.INSTALLING_UPDATE:
+        log("Internal Log: Installing update.");
+        break;
+      case CodePush.SyncStatus.UP_TO_DATE:
+        log("Internal Log: App is up to date.");
+        break;
+      case CodePush.SyncStatus.UPDATE_IGNORED:
+        log("Internal Log: User cancelled the update.");
+        break;
+      case CodePush.SyncStatus.UPDATE_INSTALLED:
+        if (resolvedInstallMode == CodePush.InstallMode.ON_NEXT_RESTART) {
+          log("Internal Log: Update is installed and will be run on the next app restart.");
+        } else if (resolvedInstallMode == CodePush.InstallMode.ON_NEXT_RESUME) {
+          if (syncOptions.minimumBackgroundDuration > 0) {
+            log(`Internal Log: Update is installed and will be run after the app has been in the background for at least ${syncOptions.minimumBackgroundDuration} seconds.`);
+          } else {
+            log("Internal Log: Update is installed and will be run when the app next resumes.");
+          }
         }
-      };
+        break;
+      case CodePush.SyncStatus.UNKNOWN_ERROR:
+        log("Internal Log: An unknown error occurred.");
+        break;
+    }
+  };
+
+  function syncStatusChangeCallback(status) {
+    if (typeof syncStatusChangeCallbackFunction === "function") {
+      syncStatusChangeCallbackFunction(status);
+    }
+    internalSyncStatusChangeCallback(status);
+  }
 
   try {
     await CodePush.notifyApplicationReady();
@@ -422,7 +427,23 @@ async function syncInternal(options = {}, syncStatusChangeCallback, downloadProg
 
     const doDownloadAndInstall = async () => {
       syncStatusChangeCallback(CodePush.SyncStatus.DOWNLOADING_PACKAGE);
-      const localPackage = await remotePackage.download(downloadProgressCallback);
+
+      function downloadStatusCallback(event) {
+        switch (event.name) {
+          case "PATCH_APPLIED_SUCCESS":
+            syncStatusChangeCallback(CodePush.SyncStatus.PATCH_APPLIED_SUCCESS);
+            break;
+          case "DOWNLOAD_REQUEST_SUCCESS":
+            syncStatusChangeCallback(CodePush.SyncStatus.DOWNLOAD_REQUEST_SUCCESS);
+            break;
+          case "UNZIPPED_SUCCESS":
+            syncStatusChangeCallback(CodePush.SyncStatus.UNZIPPED_SUCCESS);
+            break;
+          default:
+            break;
+        }
+      }
+      const localPackage = await remotePackage.download(downloadProgressCallback, downloadStatusCallback);
 
       // Determine the correct install mode based on whether the update is mandatory or not.
       resolvedInstallMode = localPackage.isMandatory ? syncOptions.mandatoryInstallMode : syncOptions.installMode;
@@ -437,8 +458,13 @@ async function syncInternal(options = {}, syncStatusChangeCallback, downloadProg
 
     const updateShouldBeIgnored = await shouldUpdateBeIgnored(remotePackage, syncOptions);
 
+    if (remotePackage) {
+      syncStatusChangeCallback(CodePush.SyncStatus.UPDATE_AVAILABLE);
+    }
+
     if (!remotePackage || updateShouldBeIgnored) {
       if (updateShouldBeIgnored) {
+          syncStatusChangeCallback(CodePush.SyncStatus.UPDATE_IGNORED_ROLLBACK);
           log("An update is available, but it is being ignored due to having been previously rolled back.");
       }
 
@@ -635,7 +661,12 @@ if (NativeCodePush) {
       CHECKING_FOR_UPDATE: 5,
       AWAITING_USER_ACTION: 6,
       DOWNLOADING_PACKAGE: 7,
-      INSTALLING_UPDATE: 8
+      INSTALLING_UPDATE: 8,
+      UPDATE_IGNORED_ROLLBACK: 9,
+      UPDATE_AVAILABLE: 10,
+      PATCH_APPLIED_SUCCESS: 11,
+      DOWNLOAD_REQUEST_SUCCESS: 12,
+      UNZIPPED_SUCCESS: 13
     },
     CheckFrequency: {
       ON_APP_START: 0,
