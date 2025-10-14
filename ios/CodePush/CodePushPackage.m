@@ -5,6 +5,12 @@
 #import "SSZipArchive.h"
 #endif
 #import <React/RCTEventEmitter.h>
+#import "BrotliDecompressor.h"
+
+typedef NS_ENUM(NSInteger, CodePushCompressionMode) {
+    CodePushCompressionModeDefault,
+    CodePushCompressionModeBrotli
+};
 
 @implementation CodePushPackage
 
@@ -17,6 +23,7 @@ static NSString *const StatusFile = @"codepush.json";
 static NSString *const UpdateBundleFileName = @"app.jsbundle";
 static NSString *const UpdateMetadataFileName = @"app.json";
 static NSString *const UnzippedFolderName = @"unzipped";
+static NSString *const DecompressedFolderName = @"decompressed";
 
 #pragma mark - Public methods
 
@@ -66,7 +73,7 @@ static NSString *const UnzippedFolderName = @"unzipped";
     NSString *newUpdateFolderPath = [self getPackageFolderPath:newUpdateHash];
     NSString *newUpdateMetadataPath = [newUpdateFolderPath stringByAppendingPathComponent:UpdateMetadataFileName];
     
-    BOOL isBundlePatchingEnabled = NO;
+    BOOL isBundlePatchingEnabled = YES;
     id isBundlePatchingEnabledValue = updatePackage[@"isBundlePatchingEnabled"];
     if (isBundlePatchingEnabledValue != nil && [isBundlePatchingEnabledValue isKindOfClass:[NSNumber class]]) {
         isBundlePatchingEnabled = [isBundlePatchingEnabledValue boolValue];
@@ -122,6 +129,36 @@ static NSString *const UnzippedFolderName = @"unzipped";
                                                         [SSZipArchive unzipFileAtPath:downloadFilePath
                                                                         toDestination:unzippedFolderPath];
                                                         [CodePushPackage dispatchDownloadStatusEvent:@"UNZIPPED_SUCCESS" context:eventEmitter];
+                                                        
+                                                        // Check if any files are Brotli compressed
+                                                        NSArray *files = [[NSFileManager defaultManager] subpathsAtPath:unzippedFolderPath];
+                                                        CodePushCompressionMode compressionMode = CodePushCompressionModeDefault;
+                                                        for (NSString *file in files) {
+                                                            if ([file hasSuffix:@".br"]) {
+                                                                compressionMode = CodePushCompressionModeBrotli;
+                                                                break;
+                                                            }
+                                                        }
+                                                        
+                                                        if (compressionMode == CodePushCompressionModeBrotli) {
+                                                            NSString *decompressedFolderPath = [CodePushPackage getDecompressedFolderPath];
+                                                            NSError *decompressError = nil;
+                                                            
+                                                            CPLog(@"Decompressing brotli compressed files at path: %@", decompressedFolderPath);
+                                                            if (![BrotliDecompressor decompressFiles:unzippedFolderPath toPath:decompressedFolderPath error:&decompressError]) {
+                                                                CPLog(@"Error decompressing files: %@", decompressError);
+                                                                failCallback(decompressError);
+                                                                return;
+                                                            }
+                                                            
+                                                            CPLog(@"Successfully decompressed files at path: %@", decompressedFolderPath);
+                                                            [CodePushPackage dispatchDownloadStatusEvent:@"DECOMPRESSED_SUCCESS" context:eventEmitter];
+                                                            
+                                                            // Remove the original unzipped folder and rename decompressed folder
+                                                            [[NSFileManager defaultManager] removeItemAtPath:unzippedFolderPath error:nil];
+                                                            [[NSFileManager defaultManager] moveItemAtPath:decompressedFolderPath toPath:unzippedFolderPath error:nil];
+                                                        }
+                                                        
                                                         [[NSFileManager defaultManager] removeItemAtPath:downloadFilePath
                                                                                                    error:&nonFailingError];
                                                         if (nonFailingError) {
@@ -555,6 +592,11 @@ static NSString *const UnzippedFolderName = @"unzipped";
 + (NSString *)getUnzippedFolderPath
 {
     return [[self getCodePushPath] stringByAppendingPathComponent:UnzippedFolderName];
+}
+
++ (NSString *)getDecompressedFolderPath
+{
+    return [[self getCodePushPath] stringByAppendingPathComponent:DecompressedFolderName];
 }
 
 + (BOOL)installPackage:(NSDictionary *)updatePackage

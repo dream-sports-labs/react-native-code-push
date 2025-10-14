@@ -395,6 +395,9 @@ async function syncInternal(options = {}, syncStatusChangeCallbackFunction, down
       case CodePush.SyncStatus.UPDATE_IGNORED:
         log("Internal Log: User cancelled the update.");
         break;
+      case CodePush.SyncStatus.DECOMPRESSED_SUCCESS:
+        log("Internal Log: Update is decompressed.");
+        break;
       case CodePush.SyncStatus.UPDATE_INSTALLED:
         if (resolvedInstallMode == CodePush.InstallMode.ON_NEXT_RESTART) {
           log("Internal Log: Update is installed and will be run on the next app restart.");
@@ -438,6 +441,9 @@ async function syncInternal(options = {}, syncStatusChangeCallbackFunction, down
             break;
           case "UNZIPPED_SUCCESS":
             syncStatusChangeCallback(CodePush.SyncStatus.UNZIPPED_SUCCESS);
+            break;
+          case "DECOMPRESSED_SUCCESS":
+            syncStatusChangeCallback(CodePush.SyncStatus.DECOMPRESSED_SUCCESS);
             break;
           default:
             break;
@@ -666,7 +672,8 @@ if (NativeCodePush) {
       UPDATE_AVAILABLE: 10,
       PATCH_APPLIED_SUCCESS: 11,
       DOWNLOAD_REQUEST_SUCCESS: 12,
-      UNZIPPED_SUCCESS: 13
+      UNZIPPED_SUCCESS: 13,
+      DECOMPRESSED_SUCCESS: 14
     },
     CheckFrequency: {
       ON_APP_START: 0,

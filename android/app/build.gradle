@@ -34,4 +34,5 @@ android {
 dependencies {
     implementation "com.facebook.react:react-native:+"
     implementation 'com.nimbusds:nimbus-jose-jwt:9.37.3'
+    implementation 'org.brotli:dec:0.1.2'
 }

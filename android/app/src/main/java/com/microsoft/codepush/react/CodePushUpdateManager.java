@@ -66,6 +66,10 @@ public class CodePushUpdateManager {
         return CodePushUtils.appendPathComponent(getCodePushPath(), CodePushConstants.UNZIPPED_FOLDER_NAME);
     }
 
+    private String getDecompressedFolderPath() {
+        return CodePushUtils.appendPathComponent(getCodePushPath(), CodePushConstants.DECOMPRESSED_FOLDER_NAME);
+    }
+
     private String getDocumentsDirectory() {
         return mDocumentsDirectory;
     }
@@ -291,11 +295,21 @@ public class CodePushUpdateManager {
             CodePushUtils.log("Unzipping ");
             // Unzip the downloaded file and then delete the zip
             String unzippedFolderPath = getUnzippedFolderPath();
-            CodePushUtils.log("unzippedFolderPath  :: "+ unzippedFolderPath);
-            FileUtils.unzipFile(downloadFile, unzippedFolderPath);
+            CodePushCompressionMode compressionMode = FileUtils.unzipFile(downloadFile, unzippedFolderPath);
 
             emitDownloadStatusEvent(context, CodePushConstants.UNZIPPED_SUCCESS);
             FileUtils.deleteFileOrFolderSilently(downloadFile);
+        
+            if (compressionMode == CodePushCompressionMode.BROTLI) {
+                String decompressedFolderPath = getDecompressedFolderPath();
+
+                CodePushUtils.log("Decompressing brotli compressed files at path: " + decompressedFolderPath);
+                FileUtils.decompressFiles(unzippedFolderPath, decompressedFolderPath);
+                CodePushUtils.log("Decompressed brotli compressed files at path: " + decompressedFolderPath);
+                FileUtils.deleteFileAtPathSilently(unzippedFolderPath);
+                unzippedFolderPath = decompressedFolderPath;
+                emitDownloadStatusEvent(context, CodePushConstants.DECOMPRESSED_SUCCESS);
+            }
 
             // Merge contents with current update based on the manifest
             String diffManifestFilePath = CodePushUtils.appendPathComponent(unzippedFolderPath,
@@ -462,6 +476,10 @@ public class CodePushUpdateManager {
             if (result == 0) {
                 emitDownloadStatusEvent(context, CodePushConstants.PATCH_APPLIED_SUCCESS);
                 CodePushUtils.log("Patch Process: Patching successful.");
+
+                // Cleanup
+                FileUtils.deleteFileAtPathSilently(patchBundleFile.getAbsolutePath());
+                FileUtils.deleteDirectoryAtPath(binaryBundle.getParent());
             } else {
                 CodePushUtils.log("Patch Process: Patching failed.");
                 throw new CodePushUnknownException("Patching failed");

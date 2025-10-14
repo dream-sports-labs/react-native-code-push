@@ -415,7 +415,12 @@ declare namespace CodePush {
         /**
          * An update was downloaded and is unzipped successfully.
          */
-        UNZIPPED_SUCCESS
+        UNZIPPED_SUCCESS,
+        
+        /**
+         * An available update was downloaded and is decompressed successfully.
+        */
+        DECOMPRESSED_SUCCESS
     }
 
     /**

@@ -400,8 +400,6 @@ NSString * const IgnoreCodePushMetadata = @".codepushrelease";
                             error:error]) {
         return;
     }
-
-    CPLog(@"Patch Process: Patching successful.");
 }
 
 + (BOOL)applyPatchToBundle:(NSString *)newUpdateFolderPath

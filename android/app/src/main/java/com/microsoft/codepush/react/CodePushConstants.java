@@ -26,6 +26,7 @@ public class CodePushConstants {
     public static final String RELATIVE_BUNDLE_PATH_KEY = "bundlePath";
     public static final String STATUS_FILE = "codepush.json";
     public static final String UNZIPPED_FOLDER_NAME = "unzipped";
+    public static final String DECOMPRESSED_FOLDER_NAME = "decompressed";
     public static final String CODE_PUSH_APK_BUILD_TIME_KEY = "CODE_PUSH_APK_BUILD_TIME";
     public static final String BUNDLE_JWT_FILE = ".codepushrelease";
     public static final String LATEST_ROLLBACK_INFO_KEY = "LATEST_ROLLBACK_INFO";
@@ -39,4 +40,5 @@ public class CodePushConstants {
     public static final String PATCH_APPLIED_SUCCESS = "PATCH_APPLIED_SUCCESS";
     public static final String DOWNLOAD_REQUEST_SUCCESS = "DOWNLOAD_REQUEST_SUCCESS";
     public static final String UNZIPPED_SUCCESS = "UNZIPPED_SUCCESS";
+    public static final String DECOMPRESSED_SUCCESS = "DECOMPRESSED_SUCCESS";
 }

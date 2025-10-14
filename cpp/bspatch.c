@@ -27,6 +27,7 @@
 
 #include <limits.h>
 #include "bspatch.h"
+#include <stdbool.h>
 
 static int64_t offtin(uint8_t *buf)
 {
@@ -111,6 +112,12 @@ static int bz2_read(const struct bspatch_stream* stream, void* buffer, int lengt
     return 0;
 }
 
+static int raw_read(const struct bspatch_stream* stream, void* buffer, int length)
+{
+	FILE* f = (FILE*)stream->opaque;
+	return fread(buffer, 1, length, f) == length ? 0 : -1;
+}
+
 static off_t readFileToBuffer(int fd, uint8_t* buffer, off_t bufferSize)
 {
     off_t bytesRead = 0;
@@ -160,7 +167,7 @@ int bsPatchFile(const char* oldFile, const char* newFile, const char* patchFile)
   BZFILE* bz2;
   struct bspatch_stream stream;
   struct stat sb;
-
+  bool useBz2 = false;
   /* Open patch file */
   if ((f = fopen(patchFile, "r")) == NULL) {
       printf ("Cannot open file %s \n", patchFile);
@@ -196,18 +203,27 @@ int bsPatchFile(const char* oldFile, const char* newFile, const char* patchFile)
       (fstat(fd, &sb)) ||
       (close(fd)==-1)) err(1,"%s", oldFile);
   if((new=malloc(newsize+1))==NULL) err(1,NULL);
-  if (NULL == (bz2 = BZ2_bzReadOpen(&bz2err, f, 0, 1, NULL, 0))) {
-      errx(1, "BZ2_bzReadOpen, bz2err=%d", bz2err);
-  }
-
-  stream.read = bz2_read;
-  stream.opaque = bz2;
+  if (useBz2) {
+    if (NULL == (bz2 = BZ2_bzReadOpen(&bz2err, f, 0, 0, NULL, 0)))
+        errx(1, "BZ2_bzReadOpen, bz2err=%d", bz2err);
+    stream.read = bz2_read;
+    stream.opaque = bz2;
+} else {
+    // For raw read, we need to seek back to after the header
+    if (fseek(f, 24, SEEK_SET) != 0)
+        err(1, "fseek");
+    stream.read = raw_read;
+    stream.opaque = f;
+}
   if (bspatch(old, oldsize, new, newsize, &stream)) {
       errx(1, "bspatch");
   }
 
   /* Clean up the bzip2 reads */
-  BZ2_bzReadClose(&bz2err, bz2);
+  	/* Clean up the reads */
+    if (useBz2) {
+		BZ2_bzReadClose(&bz2err, bz2);
+	}
   fclose(f);
 
   /* Write the new file */
