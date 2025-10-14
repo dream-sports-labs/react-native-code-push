@@ -455,7 +455,27 @@ NSString * const IgnoreCodePushMetadata = @".codepushrelease";
         }
         return NO;
     }
-    CPLog(@"Patch Process: Patching successful.");
+
+    // Clean up: Remove the source bundle directory
+    NSString *sourceBundleDir = [sourceBundlePath stringByDeletingLastPathComponent];
+    if ([[NSFileManager defaultManager] fileExistsAtPath:sourceBundleDir]) {
+        NSError *cleanupError = nil;
+        CPLog(@"Removing source bundle directory: %@", sourceBundleDir);
+        if (![[NSFileManager defaultManager] removeItemAtPath:sourceBundleDir error:&cleanupError]) {
+            CPLog(@"Warning: Failed to remove source bundle directory: %@", cleanupError);
+        }
+    }
+
+    // Clean up: Remove the patch file
+    if ([[NSFileManager defaultManager] fileExistsAtPath:patchBundleAbsolutePath]) {
+        NSError *cleanupError = nil;
+        CPLog(@"Removing patch file: %@", patchBundleAbsolutePath);
+        if (![[NSFileManager defaultManager] removeItemAtPath:patchBundleAbsolutePath error:&cleanupError]) {
+            CPLog(@"Warning: Failed to remove patch file: %@", cleanupError);
+        }
+    }
+
+    CPLog(@"Patch Process: Patching successful and cleanup completed.");
     return YES;
 }
 
