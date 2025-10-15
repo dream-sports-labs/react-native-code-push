@@ -197,7 +197,7 @@ public class CodePushUpdateManager {
                                 DownloadProgressCallback progressCallback,
                                 String stringPublicKey) throws IOException {
         String newUpdateHash = updatePackage.optString(CodePushConstants.PACKAGE_HASH_KEY, null);
-        boolean isBundlePatchingEnabled = updatePackage.optBoolean(CodePushConstants.IS_BUNDLE_PATCHING_ENABLED, true);
+        boolean isBundlePatchingEnabled = updatePackage.optBoolean(CodePushConstants.IS_BUNDLE_PATCHING_ENABLED, false);
         String newUpdateFolderPath = getPackageFolderPath(newUpdateHash);
         String newUpdateMetadataPath = CodePushUtils.appendPathComponent(newUpdateFolderPath, CodePushConstants.PACKAGE_FILE_NAME);
         CodePushUtils.log("DownloadingPackage initiated");

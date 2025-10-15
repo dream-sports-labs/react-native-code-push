@@ -73,7 +73,7 @@ static NSString *const DecompressedFolderName = @"decompressed";
     NSString *newUpdateFolderPath = [self getPackageFolderPath:newUpdateHash];
     NSString *newUpdateMetadataPath = [newUpdateFolderPath stringByAppendingPathComponent:UpdateMetadataFileName];
     
-    BOOL isBundlePatchingEnabled = YES;
+    BOOL isBundlePatchingEnabled = NO;
     id isBundlePatchingEnabledValue = updatePackage[@"isBundlePatchingEnabled"];
     if (isBundlePatchingEnabledValue != nil && [isBundlePatchingEnabledValue isKindOfClass:[NSNumber class]]) {
         isBundlePatchingEnabled = [isBundlePatchingEnabledValue boolValue];
