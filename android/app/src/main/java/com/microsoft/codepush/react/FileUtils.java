@@ -1,5 +1,7 @@
 package com.microsoft.codepush.react;
 
+import org.brotli.dec.BrotliInputStream;
+
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.File;
@@ -142,10 +144,11 @@ public class FileUtils {
         return canonicalPath;
     }
 
-    public static void unzipFile(File zipFile, String destination) throws IOException {
+    public static CodePushCompressionMode unzipFile(File zipFile, String destination) throws IOException {
         FileInputStream fileStream = null;
         BufferedInputStream bufferedStream = null;
         ZipInputStream zipStream = null;
+        CodePushCompressionMode compressionMode = CodePushCompressionMode.DEFAULT;
         try {
             fileStream = new FileInputStream(zipFile);
             bufferedStream = new BufferedInputStream(fileStream);
@@ -158,9 +161,11 @@ public class FileUtils {
             }
 
             destinationFolder.mkdirs();
-
             byte[] buffer = new byte[WRITE_BUFFER_SIZE];
             while ((entry = zipStream.getNextEntry()) != null) {
+                if (entry.getName().endsWith(".br")) {
+                    compressionMode = CodePushCompressionMode.BROTLI;
+                }
                 String fileName = validateFileName(entry.getName(), destinationFolder);
                 File file = new File(fileName);
                 if (entry.isDirectory()) {
@@ -195,6 +200,7 @@ public class FileUtils {
                 throw new CodePushUnknownException("Error closing IO resources.", e);
             }
         }
+        return compressionMode;
     }
 
     public static void writeStringToFile(String content, String filePath) throws IOException {
@@ -204,6 +210,71 @@ public class FileUtils {
             out.print(content);
         } finally {
             if (out != null) out.close();
+        }
+    }
+
+    public static void decompressFiles(String unzippedFolderPath, String decompressedFolderPath) throws IOException {
+        File unzippedFolder = new File(unzippedFolderPath);
+        File decompressedFolder = new File(decompressedFolderPath);
+        
+        if (!decompressedFolder.exists()) {
+            decompressedFolder.mkdirs();
+        }
+        
+        decompressFilesRecursive(unzippedFolder, decompressedFolder);
+    }
+
+    private static void decompressFilesRecursive(File sourceDir, File targetDir) throws IOException {
+        File[] files = sourceDir.listFiles();
+        if (files == null) return;
+
+        for (File sourceFile : files) {
+            File targetFile = new File(targetDir, sourceFile.getName());
+            
+            if (sourceFile.isDirectory()) {
+                // Create corresponding directory in target and recurse
+                targetFile.mkdirs();
+                decompressFilesRecursive(sourceFile, targetFile);
+            } else {
+                if (sourceFile.getName().endsWith(".br")) {
+                    // For .br files, decompress them
+                    String decompressedName = sourceFile.getName().substring(0, sourceFile.getName().length() - 3);
+                    File decompressedFile = new File(targetDir, decompressedName);
+                    try {
+                        decompressFile(sourceFile, decompressedFile);
+                    } catch (IOException e) {
+                       CodePushUtils.log("Failed to decompress " + sourceFile.getName() + ": " + e.getMessage());
+                        throw new CodePushUnknownException("Failed to decompress " + sourceFile.getName() + ": " + e.getMessage());
+                    }
+                } else {
+                    // For non-.br files, just copy them        
+                    copyFile(sourceFile, targetFile);
+                }
+            }
+        }
+    }
+
+    private static void decompressFile(File sourceFile, File targetFile) throws IOException {
+        try (FileInputStream fileInputStream = new FileInputStream(sourceFile);
+             BrotliInputStream brotliInputStream = new BrotliInputStream(fileInputStream);
+             FileOutputStream fileOutputStream = new FileOutputStream(targetFile)) {
+            
+            byte[] buffer = new byte[8192];
+            int bytesRead;
+            while ((bytesRead = brotliInputStream.read(buffer)) != -1) {
+                fileOutputStream.write(buffer, 0, bytesRead);
+            }
+        }
+    }
+
+    private static void copyFile(File sourceFile, File targetFile) throws IOException {
+        try (FileInputStream in = new FileInputStream(sourceFile);
+             FileOutputStream out = new FileOutputStream(targetFile)) {
+            byte[] buffer = new byte[8192];
+            int bytesRead;
+            while ((bytesRead = in.read(buffer)) != -1) {
+                out.write(buffer, 0, bytesRead);
+            }
         }
     }
 }

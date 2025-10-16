@@ -114,3 +114,5 @@ code-push-plugin-testing-framework/
 .prettierignore
 .prettierignore
 *.tgz
+
+.cursor/

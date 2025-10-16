@@ -23,9 +23,16 @@ android {
     defaultConfig {
         consumerProguardFiles 'proguard-rules.pro'
     }
+
+    externalNativeBuild {
+            cmake {
+                path "CMakeLists.txt"
+        }
+    }
 }
 
 dependencies {
     implementation "com.facebook.react:react-native:+"
     implementation 'com.nimbusds:nimbus-jose-jwt:9.37.3'
+    implementation 'org.brotli:dec:0.1.2'
 }

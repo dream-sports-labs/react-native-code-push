@@ -310,7 +310,7 @@ public class CodePushNativeModule extends ReactContextBaseJavaModule {
                     JSONObject mutableUpdatePackage = CodePushUtils.convertReadableToJsonObject(updatePackage);
                     CodePushUtils.log("mutableUpdatePackage in downloadUpdate :: "+ mutableUpdatePackage);
                     CodePushUtils.setJSONValueForKey(mutableUpdatePackage, CodePushConstants.BINARY_MODIFIED_TIME_KEY, "" + mCodePush.getBinaryResourcesModifiedTime());
-                    mUpdateManager.downloadPackage(mutableUpdatePackage, mCodePush.getAssetsBundleFileName(), new DownloadProgressCallback() {
+                    mUpdateManager.downloadPackage(getReactApplicationContext(), mutableUpdatePackage, mCodePush.getAssetsBundleFileName(), new DownloadProgressCallback() {
                         private boolean hasScheduledNextFrame = false;
                         private DownloadProgress latestDownloadProgress = null;
 

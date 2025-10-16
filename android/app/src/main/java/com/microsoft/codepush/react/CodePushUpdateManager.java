@@ -2,6 +2,11 @@ package com.microsoft.codepush.react;
 
 import android.os.Build;
 
+import com.facebook.react.bridge.ReactApplicationContext;
+import com.facebook.react.bridge.ReactContext;
+import com.facebook.react.bridge.WritableMap;
+import com.facebook.react.bridge.WritableNativeMap;
+
 import org.json.JSONObject;
 
 import java.io.BufferedInputStream;
@@ -9,6 +14,8 @@ import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -20,6 +27,33 @@ public class CodePushUpdateManager {
 
     private String mDocumentsDirectory;
 
+    private int bsPatchFile(String oldFile, String newFile, String patchFile) {
+        CodePushUtils.log("Applying patch from " + oldFile + " to " + newFile + " with patch file " + patchFile);
+
+        File oldFileObj = new File(oldFile);
+        if (!oldFileObj.exists()) {
+            CodePushUtils.log("bsPatchFile: oldFile does not exist.");
+            return -1;
+        }
+
+        File patchFileObj = new File(patchFile);
+        if (!patchFileObj.exists()) {
+            CodePushUtils.log("bsPatchFile: patchFile does not exist.");
+            return -1;
+        }
+
+        File newFileObj = new File(newFile);
+        if (newFileObj.exists()) {
+            CodePushUtils.log("bsPatchFile: newFile exists, deleting it.");
+            if (!newFileObj.delete()) {
+                CodePushUtils.log("bsPatchFile: Failed to delete existing newFile.");
+                return -1;
+            }
+        }
+
+        return BsDiffPatchLoader.nativeBsPatchFile(oldFile, newFile, patchFile);
+    }
+
     public CodePushUpdateManager(String documentsDirectory) {
         mDocumentsDirectory = documentsDirectory;
     }
@@ -30,6 +64,10 @@ public class CodePushUpdateManager {
 
     private String getUnzippedFolderPath() {
         return CodePushUtils.appendPathComponent(getCodePushPath(), CodePushConstants.UNZIPPED_FOLDER_NAME);
+    }
+
+    private String getDecompressedFolderPath() {
+        return CodePushUtils.appendPathComponent(getCodePushPath(), CodePushConstants.DECOMPRESSED_FOLDER_NAME);
     }
 
     private String getDocumentsDirectory() {
@@ -47,6 +85,12 @@ public class CodePushUpdateManager {
 
     private String getStatusFilePath() {
         return CodePushUtils.appendPathComponent(getCodePushPath(), CodePushConstants.STATUS_FILE);
+    }
+
+    private void emitDownloadStatusEvent(ReactApplicationContext context, String eventName) {
+        WritableMap map = new WritableNativeMap();
+        map.putString("name", eventName);
+        context.getJSModule(ReactContext.RCTDeviceEventEmitter.class).emit(CodePushConstants.DOWNLOAD_STATUS_EVENT_NAME, map);
     }
 
     public JSONObject getCurrentPackageInfo() {
@@ -149,16 +193,18 @@ public class CodePushUpdateManager {
         }
     }
 
-    public void downloadPackage(JSONObject updatePackage, String expectedBundleFileName,
+    public void downloadPackage(ReactApplicationContext context, JSONObject updatePackage, String expectedBundleFileName,
                                 DownloadProgressCallback progressCallback,
                                 String stringPublicKey) throws IOException {
         String newUpdateHash = updatePackage.optString(CodePushConstants.PACKAGE_HASH_KEY, null);
+        boolean isBundlePatchingEnabled = updatePackage.optBoolean(CodePushConstants.IS_BUNDLE_PATCHING_ENABLED, false);
         String newUpdateFolderPath = getPackageFolderPath(newUpdateHash);
         String newUpdateMetadataPath = CodePushUtils.appendPathComponent(newUpdateFolderPath, CodePushConstants.PACKAGE_FILE_NAME);
         CodePushUtils.log("DownloadingPackage initiated");
         CodePushUtils.log("newUpdateHash :: " + newUpdateHash);
         CodePushUtils.log("newUpdateFolderPath :: " + newUpdateFolderPath);
         CodePushUtils.log("newUpdateMetadataPath :: " + newUpdateMetadataPath);
+        CodePushUtils.log("isBundlePatchingEnabled: " + isBundlePatchingEnabled);
         if (FileUtils.fileAtPathExists(newUpdateFolderPath)) {
             // This removes any stale data in newPackageFolderPath that could have been left
             // uncleared due to a crash or error during the download or install process.
@@ -196,6 +242,7 @@ public class CodePushUpdateManager {
 
             long totalBytes = connection.getContentLength();
             long receivedBytes = 0;
+            CodePushUtils.log("totalBytes received in bytes:: "+ totalBytes);
 
             File downloadFolder = new File(getCodePushPath());
             downloadFolder.mkdirs();
@@ -228,6 +275,8 @@ public class CodePushUpdateManager {
                 throw new CodePushUnknownException("Received " + receivedBytes + " bytes, expected " + totalBytes);
             }
 
+            emitDownloadStatusEvent(context, CodePushConstants.DOWNLOAD_REQUEST_SUCCESS);
+
             isZip = ByteBuffer.wrap(header).getInt() == 0x504b0304;
         } catch (MalformedURLException e) {
             throw new CodePushMalformedDataException(downloadUrlString, e);
@@ -246,9 +295,21 @@ public class CodePushUpdateManager {
             CodePushUtils.log("Unzipping ");
             // Unzip the downloaded file and then delete the zip
             String unzippedFolderPath = getUnzippedFolderPath();
-            CodePushUtils.log("unzippedFolderPath  :: "+ unzippedFolderPath);
-            FileUtils.unzipFile(downloadFile, unzippedFolderPath);
+            CodePushCompressionMode compressionMode = FileUtils.unzipFile(downloadFile, unzippedFolderPath);
+
+            emitDownloadStatusEvent(context, CodePushConstants.UNZIPPED_SUCCESS);
             FileUtils.deleteFileOrFolderSilently(downloadFile);
+        
+            if (compressionMode == CodePushCompressionMode.BROTLI) {
+                String decompressedFolderPath = getDecompressedFolderPath();
+
+                CodePushUtils.log("Decompressing brotli compressed files at path: " + decompressedFolderPath);
+                FileUtils.decompressFiles(unzippedFolderPath, decompressedFolderPath);
+                CodePushUtils.log("Decompressed brotli compressed files at path: " + decompressedFolderPath);
+                FileUtils.deleteFileAtPathSilently(unzippedFolderPath);
+                unzippedFolderPath = decompressedFolderPath;
+                emitDownloadStatusEvent(context, CodePushConstants.DECOMPRESSED_SUCCESS);
+            }
 
             // Merge contents with current update based on the manifest
             String diffManifestFilePath = CodePushUtils.appendPathComponent(unzippedFolderPath,
@@ -266,6 +327,11 @@ public class CodePushUpdateManager {
 
             FileUtils.copyDirectoryContents(unzippedFolderPath, newUpdateFolderPath);
             FileUtils.deleteFileAtPathSilently(unzippedFolderPath);
+
+            if (isBundlePatchingEnabled) {
+                applyPatch(newUpdateFolderPath, context);
+            }
+
             // For zip updates, we need to find the relative path to the jsBundle and save it in the
             // metadata so that we can find and run it easily the next time.
             String relativeBundlePath = CodePushUpdateUtils.findJSBundleInUpdateContents(newUpdateFolderPath, expectedBundleFileName);
@@ -318,12 +384,110 @@ public class CodePushUpdateManager {
                 CodePushUtils.setJSONValueForKey(updatePackage, CodePushConstants.RELATIVE_BUNDLE_PATH_KEY, relativeBundlePath);
             }
         } else {
-            // File is a jsbundle, move it to a folder with the packageHash as its name
-            FileUtils.moveFile(downloadFile, newUpdateFolderPath, expectedBundleFileName);
+            if (isBundlePatchingEnabled) {
+                CodePushUtils.log("Patch Process: Moving single file from " + downloadFile.getAbsolutePath() + " to " + newUpdateFolderPath + " with name " + CodePushConstants.PATCH_BUNDLE_FILE_NAME);
+                FileUtils.moveFile(downloadFile, newUpdateFolderPath, CodePushConstants.PATCH_BUNDLE_FILE_NAME);
+                applyPatch(newUpdateFolderPath, context);
+            } else {
+                // File is a jsbundle, move it to a folder with the packageHash as its name
+                FileUtils.moveFile(downloadFile, newUpdateFolderPath, expectedBundleFileName);
+            }
         }
 
         // Save metadata to the folder.
         CodePushUtils.writeJsonToFile(updatePackage, newUpdateMetadataPath);
+    }
+
+    private void applyPatch(String newUpdateFolderPath, ReactApplicationContext context) throws CodePushUnknownException, CodePushInvalidUpdateException {
+        CodePushUtils.log("Patch Process: Starting patch process.");
+
+        String findPatchBundleRelativePath = checkPatchFileExistence(newUpdateFolderPath);
+
+        File binaryBundle = copyOriginalBundle(context);
+
+        applyPatchToBundle(newUpdateFolderPath, findPatchBundleRelativePath, binaryBundle, context);
+        
+        CodePushUtils.log("Patch Process: Patch application completed.");
+    }
+
+    private String checkPatchFileExistence(String newUpdateFolderPath) throws CodePushInvalidUpdateException {
+        String patchBundleFileName = CodePushConstants.PATCH_BUNDLE_FILE_NAME;
+        String findPatchBundleRelativePath = CodePushUpdateUtils.findJSBundleInUpdateContents(newUpdateFolderPath, patchBundleFileName);
+        if (findPatchBundleRelativePath == null) {
+            CodePushUtils.log("Patch Process: Update is invalid - Patch bundle file not found.");
+            throw new CodePushInvalidUpdateException("Update is invalid - A patch bundle file named \"" + patchBundleFileName + "\" could not be found within the downloaded contents. Please check that you are releasing \"" + patchBundleFileName + "\" file correctly.");
+        }
+        CodePushUtils.log("Patch Process: Patch bundle file found at " + findPatchBundleRelativePath);
+        return findPatchBundleRelativePath;
+    }
+
+    private File copyOriginalBundle(ReactApplicationContext context) throws CodePushUnknownException {
+        File binaryBundleDir = new File(getCodePushPath(), CodePushConstants.BINARY_BUNDLE_DIR);
+        if (!binaryBundleDir.exists()) {
+            CodePushUtils.log("Patch Process: Creating binary bundle directory.");
+            binaryBundleDir.mkdirs();
+        }
+
+        File binaryBundle = new File(binaryBundleDir, CodePushConstants.DEFAULT_JS_BUNDLE_NAME);
+        // This is done to prevent using old binary bundle in case of new apk updates.
+        if (binaryBundle.exists()) {
+            CodePushUtils.log("Patch Process: Deleting existing binary bundle.");
+            binaryBundle.delete();
+        }
+        if (!binaryBundle.exists()) {
+            CodePushUtils.log("Patch Process: Copying original bundle from assets.");
+            InputStream input = null;
+            OutputStream output = null;
+            try {
+                input = context.getAssets().open(CodePushConstants.DEFAULT_JS_BUNDLE_NAME);
+                output = new FileOutputStream(binaryBundle);
+
+                byte[] buffer = new byte[1024];
+                int read;
+                while ((read = input.read(buffer)) != -1) {
+                    output.write(buffer, 0, read);
+                }
+            } catch (Exception e) {
+                CodePushUtils.log("Patch Process: Failed to copy original bundle with error: " + e.getMessage());
+                throw new CodePushUnknownException("Failed to copy original bundle shipped within APK to " + binaryBundle.getAbsolutePath() + " with error: " + e.getMessage());
+            } finally {
+                try {
+                    if (input != null) {
+                        input.close();
+                    }
+                    if (output != null) {
+                        output.close();
+                    }
+                } catch (IOException e) {
+                    CodePushUtils.log("Patch Process: Failed to close streams: " + e.getMessage());
+                }
+            }
+        }
+        return binaryBundle;
+    }
+
+    private void applyPatchToBundle(String newUpdateFolderPath, String findPatchBundleRelativePath, File binaryBundle, ReactApplicationContext context) throws CodePushUnknownException {
+        try {
+            File patchBundleFile = new File(newUpdateFolderPath, findPatchBundleRelativePath);
+            CodePushUtils.log("Patch Process: Applying patch from " + patchBundleFile.getAbsolutePath());
+            String dir = patchBundleFile.getParent();
+            File modifiedBundleFile = new File(dir, CodePushConstants.DEFAULT_JS_BUNDLE_NAME);
+            int result = bsPatchFile(binaryBundle.getAbsolutePath(), modifiedBundleFile.getAbsolutePath(), patchBundleFile.getAbsolutePath());
+            if (result == 0) {
+                emitDownloadStatusEvent(context, CodePushConstants.PATCH_APPLIED_SUCCESS);
+                CodePushUtils.log("Patch Process: Patching successful.");
+
+                // Cleanup
+                FileUtils.deleteFileAtPathSilently(patchBundleFile.getAbsolutePath());
+                FileUtils.deleteDirectoryAtPath(binaryBundle.getParent());
+            } else {
+                CodePushUtils.log("Patch Process: Patching failed.");
+                throw new CodePushUnknownException("Patching failed");
+            }
+        } catch (Exception e) {
+            CodePushUtils.log("Patch Process: Failed to patch bundle with error: " + e.getMessage());
+            throw new CodePushUnknownException("Failed to patch bundle with error: " + e.getMessage());
+        }
     }
 
     public void installPackage(JSONObject updatePackage, boolean removePendingUpdate) {
